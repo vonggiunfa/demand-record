@@ -1,23 +1,86 @@
-# DemandRecordTable 组件使用示例
-
-本文档提供了 DemandRecordTable 组件的使用示例和常见场景。
+# DemandRecordTable 组件示例
 
 ## 基本用法
 
-在页面中引入并使用 DemandRecordTable 组件：
+DemandRecordTable 组件是一个独立的需求管理表格，无需传入任何props。组件内部自行管理状态。
 
 ```tsx
 import DemandRecordTable from '@/components/DemandRecordTable';
 
-export default function DemandPage() {
+export default function Page() {
   return (
-    <div className="container mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">项目需求记录</h1>
+    <div className="container mx-auto py-10">
+      <h1 className="text-2xl font-bold mb-6">需求记录管理</h1>
       <DemandRecordTable />
     </div>
   );
 }
 ```
+
+## 功能演示
+
+### 1. 添加新需求
+
+点击表格上方的"新增"按钮，系统会创建一个新的空行，并自动将其选中，使其进入可编辑状态。然后用户可以填写需求ID和需求描述。
+
+### 2. 选择和编辑
+
+只有被选中的行（通过勾选复选框）才能进行编辑。这是为了防止意外修改数据。
+
+### 3. 删除行
+
+选中一行或多行后，点击"删除"按钮可以删除所选行。删除按钮会显示已选择的行数。
+
+### 4. 保存数据
+
+点击"保存"按钮，系统会将当前表格中的所有数据保存到服务器的data-json文件夹中。文件名按当前月份自动生成，例如：2025-04.json。
+
+保存格式示例：
+```json
+{
+  "lastUpdated": "2025-04-15T08:30:42.123Z",
+  "records": [
+    {
+      "id": "abcd123",
+      "demandId": "REQ-001",
+      "description": "首页UI优化",
+      "createdAt": "2025-04-10T14:25:36.789Z"
+    },
+    {
+      "id": "efgh456",
+      "demandId": "REQ-002",
+      "description": "添加用户注册功能",
+      "createdAt": "2025-04-12T09:15:22.456Z"
+    }
+  ]
+}
+```
+
+### 5. 自动加载数据
+
+页面加载时，组件会自动检查是否存在当前月份的数据文件。如果找到，会自动加载该文件中的数据到表格。例如，在2025年4月访问页面时，系统会尝试加载 2025-04.json 文件的内容。
+
+### 6. 导入CSV
+
+点击"导入CSV"按钮可以从本地导入CSV文件。CSV文件应包含需求ID、需求描述和创建时间列。
+
+CSV示例：
+```
+需求ID,需求描述,创建时间
+REQ-001,首页UI优化,2025-04-10 14:25:36
+REQ-002,添加用户注册功能,2025-04-12 09:15:22
+```
+
+### 7. 导出CSV
+
+点击"导出全部"或"导出所选"按钮可以将数据导出为CSV文件。如果没有选中行，则导出全部数据；如果有选中行，则只导出所选行。
+
+## 使用提示
+
+1. **数据自动保存**：每次对表格进行操作后，记得点击"保存"按钮保存更改。
+2. **按月组织数据**：系统按月份管理数据文件，可以方便地查看历史数据（未来版本将支持历史数据浏览）。
+3. **编辑前先选择**：要编辑某一行，必须先选中该行（勾选复选框）。
+4. **键盘导航**：编辑时可以使用Enter键在输入框之间切换。
 
 ## 常见使用场景
 

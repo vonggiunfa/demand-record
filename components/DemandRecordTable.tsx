@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
-import { Download, Plus, Trash2, Upload } from 'lucide-react';
+import { Download, Plus, Save, Trash2, Upload } from 'lucide-react';
 import React, { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from "sonner";
 
@@ -114,6 +114,24 @@ const TableRow = React.memo(({
 });
 
 /**
+ * 获取API基础路径
+ * 根据运行环境自动确定正确的基础路径
+ */
+const getApiBasePath = (): string => {
+  // 如果在客户端，获取当前路径的基础部分
+  if (typeof window !== 'undefined') {
+    const pathParts = window.location.pathname.split('/');
+    // 检查路径是否包含basePath
+    if (pathParts.length > 1 && pathParts[1] === 'demand-record') {
+      return '/demand-record';
+    }
+  }
+  
+  // 无法确定时，使用已知的basePath
+  return '/demand-record';
+};
+
+/**
  * DemandRecordTable - 需求记录表格组件
  * 
  * 功能：
@@ -121,16 +139,29 @@ const TableRow = React.memo(({
  * 2. 支持选择行进行批量操作
  * 3. 支持导入导出CSV数据
  * 4. 只有选中行才能编辑需求ID和描述
+ * 5. 支持保存数据到本地JSON文件，按月份组织
  */
 const DemandRecordTable = () => {
   const [rows, setRows] = useState<DemandRecord[]>([])
   const [isClient, setIsClient] = useState(false)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [selectAll, setSelectAll] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [apiBasePath, setApiBasePath] = useState('/demand-record')
   const inputRefs = useRef<{[key: string]: HTMLInputElement | HTMLTextAreaElement | null}>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
   
+  // 在客户端初始化时设置正确的API基础路径
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const detectedPath = getApiBasePath();
+      console.log('检测到的API基础路径:', detectedPath, '当前URL:', window.location.href);
+      setApiBasePath(detectedPath);
+    }
+  }, []);
+
   // 使用useCallback优化事件处理函数
   
   // 处理输入变化
@@ -634,6 +665,201 @@ const DemandRecordTable = () => {
     };
   }, [isClient]);
 
+  // 获取当前月份的文件名
+  const getCurrentMonthFileName = useCallback(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.json`;
+  }, []);
+
+  // 保存数据到JSON文件
+  const saveToJsonFile = useCallback(async () => {
+    if (rows.length === 0) {
+      toast.error('没有数据可保存');
+      return;
+    }
+
+    setIsSaving(true);
+    
+    try {
+      // 创建要保存的数据对象
+      const dataToSave = {
+        lastUpdated: new Date().toISOString(),
+        records: rows
+      };
+
+      const fileName = getCurrentMonthFileName();
+      let apiUrl = `${apiBasePath}/api/save-data`;
+      console.log(`正在保存数据到文件: ${fileName}`, {
+        recordsCount: rows.length,
+        apiUrl
+      });
+
+      // 首次尝试带有basePath的URL
+      let response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          data: dataToSave
+        }),
+      });
+
+      // 如果是404错误，尝试不带basePath的URL
+      if (response.status === 404) {
+        console.warn('带basePath的API路径请求失败，尝试不带basePath的路径');
+        apiUrl = `/api/save-data`;
+        response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName,
+            data: dataToSave
+          }),
+        });
+        
+        // 如果成功，更新apiBasePath
+        if (response.ok) {
+          console.log('不带basePath的API路径请求成功，更新apiBasePath');
+          setApiBasePath('');
+        }
+      }
+
+      // 获取响应文本以便调试
+      const responseText = await response.text();
+      console.log(`服务器响应状态: ${response.status}`, responseText);
+      
+      let result;
+      try {
+        // 尝试解析JSON
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('解析响应JSON失败:', parseError);
+        throw new Error(`服务器返回了无效的JSON数据: ${responseText.substring(0, 100)}...`);
+      }
+
+      if (!response.ok) {
+        const errorMessage = result?.message || '保存失败';
+        const errorDetails = result?.details || '';
+        throw new Error(`${errorMessage}${errorDetails ? `: ${errorDetails}` : ''}`);
+      }
+      
+      if (result.success) {
+        toast.success('数据已成功保存到文件');
+        console.log('保存成功，文件路径:', result.path);
+      } else {
+        throw new Error(result.message || '保存操作未成功完成');
+      }
+    } catch (error: any) {
+      console.error('保存数据到文件时发生错误', error);
+      toast.error(`保存失败: ${error instanceof Error ? error.message : '未知错误'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [rows, getCurrentMonthFileName, apiBasePath]);
+
+  // 从JSON文件加载数据
+  const loadFromJsonFile = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      const fileName = getCurrentMonthFileName();
+      let apiUrl = `${apiBasePath}/api/load-data?fileName=${fileName}`;
+      console.log(`尝试从服务器加载数据文件:`, {
+        fileName,
+        apiUrl
+      });
+      
+      // 首次尝试带有basePath的URL
+      let response = await fetch(apiUrl);
+      
+      // 如果是404错误，尝试不带basePath的URL
+      if (response.status === 404) {
+        // 检查一下是否是因为文件不存在，还是因为API路径问题
+        const responseText = await response.text();
+        try {
+          // 尝试解析响应
+          const result = JSON.parse(responseText);
+          // 如果能解析，并且消息是"文件不存在"，那么API路径是正确的，只是文件不存在
+          if (result.message === '文件不存在' || result.message === '数据目录不存在') {
+            console.log('文件不存在，这是正常的');
+            return false;
+          }
+        } catch (e) {
+          // 解析失败，可能是API路径问题
+          console.warn('带basePath的API路径请求失败，尝试不带basePath的路径');
+        }
+        
+        // 尝试不带basePath的URL
+        apiUrl = `/api/load-data?fileName=${fileName}`;
+        response = await fetch(apiUrl);
+        
+        // 如果成功，更新apiBasePath
+        if (response.ok) {
+          console.log('不带basePath的API路径请求成功，更新apiBasePath');
+          setApiBasePath('');
+        }
+      }
+      
+      // 如果状态码是404，说明文件不存在，这是正常的情况
+      if (response.status === 404) {
+        console.log('当前月份没有保存的数据');
+        return false;
+      }
+      
+      // 获取响应文本以便调试
+      const responseText = await response.text();
+      console.log(`服务器响应状态: ${response.status}`, responseText);
+      
+      let result;
+      try {
+        // 尝试解析JSON
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('解析响应JSON失败:', parseError);
+        throw new Error(`服务器返回了无效的JSON数据: ${responseText.substring(0, 100)}...`);
+      }
+      
+      if (!response.ok) {
+        const errorMessage = result?.message || '加载失败';
+        const errorDetails = result?.details || '';
+        throw new Error(`${errorMessage}${errorDetails ? `: ${errorDetails}` : ''}`);
+      }
+      
+      if (result.success && result.data) {
+        // 处理日期字段
+        const loadedRows = result.data.records.map((record: any) => ({
+          ...record,
+          createdAt: new Date(record.createdAt)
+        }));
+        
+        setRows(loadedRows);
+        toast.success(`成功加载 ${loadedRows.length} 条数据`);
+        return true;
+      } else {
+        throw new Error(result.message || '加载操作未成功完成');
+      }
+    } catch (error: any) {
+      console.error('加载数据时发生错误', error);
+      toast.error(`加载失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getCurrentMonthFileName, apiBasePath, setApiBasePath]);
+
+  // 在组件挂载后加载当前月份的数据
+  useEffect(() => {
+    if (isClient) {
+      loadFromJsonFile().catch(error => {
+        console.warn('加载数据失败，这可能是正常的（如果是第一次使用）', error);
+      });
+    }
+  }, [isClient, loadFromJsonFile]);
+
   // 当组件挂载时初始化
   useEffect(() => {
     setIsClient(true)
@@ -678,6 +904,16 @@ const DemandRecordTable = () => {
             >
               <Trash2 className="mr-2 h-4 w-4" />
               删除{hasSelected ? `(${selectedCount})` : ''}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={saveToJsonFile}
+              className="h-8 text-green-500 hover:text-green-700 border-green-300 hover:border-green-500 hover:bg-green-50"
+              disabled={!hasData || isSaving}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? '保存中...' : '保存'}
             </Button>
             <span className="text-sm text-muted-foreground ml-2">
               {hasSelected ? `已选择 ${selectedCount}/${totalCount} 行` : ''}
@@ -850,12 +1086,13 @@ const DemandRecordTable = () => {
                 
                 /* 只读单元格样式 */
                 .sticky-table .readonly-text {
-                  text-align: left;
+                  text-align: center;
                   padding: 8px 12px;
                   line-height: 1.25;
                   min-height: 40px;
                   display: flex;
                   align-items: center;
+                  justify-content: center;
                   font-size: 14px;
                 }
                 
