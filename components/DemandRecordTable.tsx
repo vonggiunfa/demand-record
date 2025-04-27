@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
@@ -541,8 +541,9 @@ const DemandRecordTable = () => {
           <Input
             ref={(el) => {
               inputRefs.current[`${row.id}_${column.dataIndex}`] = el;
-            }}
+            }}  
             value={row[column.dataIndex] || ''}
+            className='text-center'
             onChange={(e) => handleInputChange(row.id, column.dataIndex, e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, row.id, colIndex)}
             placeholder="请输入需求描述"
@@ -567,6 +568,7 @@ const DemandRecordTable = () => {
             ref={(el) => {
               inputRefs.current[`${row.id}_${column.dataIndex}`] = el;
             }}
+            className='text-center'
             value={row[column.dataIndex as keyof DemandRecord] as string || ''}
             onChange={(e) => handleInputChange(row.id, column.dataIndex, e.target.value)}
             onKeyDown={(e) => handleKeyDown(e, row.id, colIndex)}
@@ -927,9 +929,8 @@ const DemandRecordTable = () => {
         )}
       </CardContent>
 
-      <CardFooter className="p-4 pt-0 text-sm text-muted-foreground flex flex-col items-start gap-2">
-        {/* 移除使用说明组件 */}
-      </CardFooter>
+      {/* <CardFooter className="p-4 pt-0 text-sm text-muted-foreground flex flex-col items-start gap-2">
+      </CardFooter> */}
     </Card>
   )
 }
