@@ -69,7 +69,7 @@ export default function MonthYearPicker({
           <Button
             variant="outline"
             className={cn(
-              "justify-between min-w-[240px] text-left font-normal",
+              "justify-between min-w-[140px] text-left font-normal",
               !date && "text-muted-foreground"
             )}
           >

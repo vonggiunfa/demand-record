@@ -447,9 +447,9 @@ export default function DemandRecordTable() {
       {/* 表格区域 */}
       <div className="border rounded-md overflow-auto max-h-[70vh]">
         <Table>
-          <TableHeader className="sticky top-0 bg-background z-10">
+          <TableHeader className="sticky top-0 z-10">
             <TableRow>
-              <TableHead className="w-[50px] sticky left-0 bg-background z-20 text-center">
+              <TableHead className="w-[50px] sticky left-0 z-20 text-center bg-background">
                 <Checkbox
                   checked={isAllSelected}
                   onCheckedChange={handleSelectAll}
@@ -491,14 +491,20 @@ export default function DemandRecordTable() {
                     key={record.id}
                     className={cn("group", isSelected && "bg-muted/50")}
                   >
-                    <TableCell className="sticky left-0 bg-background group-hover:bg-muted/50 z-10 text-center">
-                      <Checkbox
-                        checked={isSelected}
-                        onCheckedChange={(checked) => 
-                          handleSelectRow(record.id, checked === true)
-                        }
-                        aria-label="选择行"
-                      />
+                    <TableCell 
+                      className="sticky left-0 z-10 text-center p-0"
+                    >
+                      <div className={cn(
+                        "w-full h-full flex items-center justify-center p-4",
+                      )}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={(checked) => 
+                            handleSelectRow(record.id, checked === true)
+                          }
+                          aria-label="选择行"
+                        />
+                      </div>
                     </TableCell>
                     <TableCell className="text-center">
                       {isSelected ? (
