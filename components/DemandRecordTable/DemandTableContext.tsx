@@ -1,0 +1,447 @@
+"use client";
+
+import { DemandRecord } from '@/types/demand';
+import React, { createContext, ReactNode, useCallback, useContext, useState } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { useToast } from '../ui/use-toast';
+import {
+  API_BASE_PATH,
+  DemandTableContextType,
+  PendingAction,
+  SearchResult,
+  SearchType
+} from './types';
+
+// 创建上下文
+const DemandTableContext = createContext<DemandTableContextType | undefined>(undefined);
+
+// 上下文提供者组件
+export function DemandTableProvider({ children }: { children: ReactNode }) {
+  const { toast } = useToast();
+  
+  // 基础状态
+  const [records, setRecords] = useState<DemandRecord[]>([]);
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+  const [currentMonth, setCurrentMonth] = useState<string>(
+    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [availableMonths, setAvailableMonths] = useState<string[]>([]);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
+  
+  // 搜索状态
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchType, setSearchType] = useState<SearchType>('id');
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult>({ 
+    records: [], 
+    total: 0, 
+    hasMore: false 
+  });
+  const [searchOffset, setSearchOffset] = useState(0);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
+
+  // 加载月份列表
+  const loadAvailableMonths = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE_PATH}/api/year-months`);
+      const data = await response.json();
+      
+      if (data.success) {
+        setAvailableMonths(data.yearMonths);
+      } else {
+        console.error('加载月份列表失败:', data.error);
+      }
+    } catch (error) {
+      console.error('获取月份列表出错:', error);
+    }
+  }, []);
+
+  // 加载数据
+  const loadData = useCallback(async (month: string) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`${API_BASE_PATH}/api/load-data?yearMonth=${month}`);
+      const responseData = await response.json();
+      
+      if (responseData.success && responseData.data) {
+        setRecords(responseData.data.records);
+        setHasChanges(false);
+      } else {
+        toast({
+          title: "加载失败",
+          description: responseData.message || "加载数据时出错",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      toast({
+        title: "加载失败",
+        description: "无法连接到服务器",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  // 保存数据
+  const saveData = useCallback(async () => {
+    setIsSaving(true);
+    
+    try {
+      const payload = {
+        yearMonth: currentMonth,
+        data: {
+          lastUpdated: new Date().toISOString(),
+          records
+        }
+      };
+      
+      const response = await fetch(`${API_BASE_PATH}/api/save-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseData = await response.json();
+      
+      if (responseData.success) {
+        toast({
+          title: "保存成功",
+          description: responseData.message || `成功保存 ${records.length} 条记录`
+        });
+        setHasChanges(false);
+        loadAvailableMonths(); // 刷新可用月份列表
+      } else {
+        toast({
+          title: "保存失败",
+          description: responseData.message || "保存数据时出错",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('保存数据失败:', error);
+      toast({
+        title: "保存失败",
+        description: "无法连接到服务器",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentMonth, records, toast, loadAvailableMonths]);
+
+  // 添加新记录
+  const addNewRecord = useCallback(() => {
+    const newRecord: DemandRecord = {
+      id: uuidv4(),
+      demandId: '',
+      description: '',
+      createdAt: new Date()
+    };
+    
+    setRecords(prev => [newRecord, ...prev]);
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      next.add(newRecord.id);
+      return next;
+    });
+    setHasChanges(true);
+  }, []);
+
+  // 删除选中记录
+  const deleteSelectedRecords = useCallback(() => {
+    if (selectedRows.size === 0) return;
+    
+    setRecords(prev => prev.filter(record => !selectedRows.has(record.id)));
+    setSelectedRows(new Set());
+    setHasChanges(true);
+    
+    toast({
+      title: "删除成功",
+      description: `已删除 ${selectedRows.size} 条记录`
+    });
+  }, [selectedRows, toast]);
+
+  // 处理记录字段变更
+  const handleRecordChange = useCallback((id: string, field: keyof DemandRecord, value: any) => {
+    setRecords(prev => prev.map(record => 
+      record.id === id ? { ...record, [field]: value } : record
+    ));
+    setHasChanges(true);
+  }, []);
+
+  // 处理全选/取消全选
+  const handleSelectAll = useCallback((checked: boolean) => {
+    if (checked) {
+      const allIds = new Set(records.map(record => record.id));
+      setSelectedRows(allIds);
+    } else {
+      setSelectedRows(new Set());
+    }
+  }, [records]);
+
+  // 处理选择单行
+  const handleSelectRow = useCallback((id: string, checked: boolean) => {
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // 处理行点击
+  const handleRowClick = useCallback((id: string, event: React.MouseEvent) => {
+    // 如果点击的是复选框或输入框，不处理行点击事件
+    if (
+      (event.target as HTMLElement).tagName === 'INPUT' ||
+      (event.target as HTMLElement).closest('button') ||
+      (event.target as HTMLElement).closest('input')
+    ) {
+      return;
+    }
+    
+    // 否则切换行选中状态
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  // 处理月份变更
+  const handleMonthChange = useCallback((month: string) => {
+    if (hasChanges) {
+      // 有未保存的更改，打开确认对话框
+      setPendingAction({
+        action: 'changeMonth',
+        data: month
+      });
+      setConfirmDialogOpen(true);
+    } else {
+      // 没有未保存的更改，直接切换月份
+      setCurrentMonth(month);
+      loadData(month);
+    }
+  }, [hasChanges, loadData]);
+
+  // 基础搜索，搜索当前月份数据
+  const executeSearch = useCallback((e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (!searchTerm.trim()) return;
+    
+    // 如果有未保存的更改，打开确认对话框
+    if (hasChanges) {
+      setPendingAction({
+        action: 'search',
+        data: { term: searchTerm, type: searchType }
+      });
+      setConfirmDialogOpen(true);
+    } else {
+      // 搜索当前月份的数据（本地搜索）
+      const filteredRecords = records.filter(record => {
+        const value = searchType === 'id' ? record.demandId : record.description;
+        return value.toLowerCase().includes(searchTerm.toLowerCase());
+      });
+      
+      setSearchResults({
+        records: filteredRecords,
+        total: filteredRecords.length,
+        hasMore: false
+      });
+      setIsSearchMode(true);
+    }
+  }, [searchTerm, searchType, hasChanges, records]);
+
+  // 搜索上下文，通过API搜索所有月份数据
+  const handleSearch = useCallback(async (term: string, type: SearchType, offset: number = 0) => {
+    if (!term.trim()) return;
+    
+    setIsSearchLoading(true);
+    
+    try {
+      const response = await fetch(
+        `${API_BASE_PATH}/api/search?term=${encodeURIComponent(term)}&type=${type}&offset=${offset}&limit=20`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        if (offset === 0) {
+          // 清空当前结果，显示新结果
+          setSearchResults(data.results);
+        } else {
+          // 追加到当前结果
+          setSearchResults(prev => ({
+            records: [...prev.records, ...data.results.records],
+            total: data.results.total,
+            hasMore: data.results.hasMore
+          }));
+        }
+        
+        setSearchOffset(offset + data.results.records.length);
+        setIsSearchMode(true);
+      } else {
+        toast({
+          title: "搜索失败",
+          description: data.message || "执行搜索时出错",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('搜索失败:', error);
+      toast({
+        title: "搜索失败",
+        description: "无法连接到服务器",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, [toast]);
+
+  // 加载更多搜索结果
+  const loadMoreResults = useCallback(() => {
+    if (!searchTerm.trim() || isSearchLoading || !searchResults.hasMore) return;
+    
+    handleSearch(searchTerm, searchType, searchOffset);
+  }, [searchTerm, searchType, searchOffset, isSearchLoading, searchResults.hasMore, handleSearch]);
+
+  // 退出搜索模式
+  const exitSearchMode = useCallback(() => {
+    setIsSearchMode(false);
+    setSearchResults({ records: [], total: 0, hasMore: false });
+    setSearchOffset(0);
+  }, []);
+
+  // 确认待执行操作
+  const confirmPendingAction = useCallback(() => {
+    if (!pendingAction) return;
+    
+    setConfirmDialogOpen(false);
+    
+    switch (pendingAction.action) {
+      case 'changeMonth':
+        // 切换月份
+        const month = pendingAction.data as string;
+        setCurrentMonth(month);
+        loadData(month);
+        break;
+      
+      case 'search':
+        // 执行搜索
+        const { term, type } = pendingAction.data as { term: string, type: SearchType };
+        // 本地搜索当前月份的数据
+        const filteredRecords = records.filter(record => {
+          const value = type === 'id' ? record.demandId : record.description;
+          return value.toLowerCase().includes(term.toLowerCase());
+        });
+        
+        setSearchResults({
+          records: filteredRecords,
+          total: filteredRecords.length,
+          hasMore: false
+        });
+        setIsSearchMode(true);
+        break;
+      
+      case 'importCSV':
+        // 导入CSV
+        const importedRecords = pendingAction.data as DemandRecord[];
+        setRecords(importedRecords);
+        setHasChanges(true);
+        break;
+    }
+    
+    setPendingAction(null);
+  }, [pendingAction, loadData, records]);
+
+  // 上下文值对象
+  const contextValue: DemandTableContextType = {
+    // 数据状态
+    records,
+    setRecords,
+    selectedRows,
+    setSelectedRows,
+    currentMonth,
+    setCurrentMonth,
+    isLoading,
+    setIsLoading,
+    isSaving, 
+    setIsSaving,
+    hasChanges,
+    setHasChanges,
+    availableMonths,
+    setAvailableMonths,
+    confirmDialogOpen,
+    setConfirmDialogOpen,
+    pendingAction,
+    setPendingAction,
+    
+    // 搜索状态
+    searchTerm,
+    setSearchTerm,
+    searchType,
+    setSearchType,
+    isSearchMode,
+    setIsSearchMode,
+    searchResults,
+    setSearchResults,
+    isSearchLoading,
+    setIsSearchLoading,
+    searchOffset,
+    setSearchOffset,
+    
+    // 方法
+    loadData,
+    loadAvailableMonths,
+    saveData,
+    addNewRecord,
+    deleteSelectedRecords,
+    handleRecordChange,
+    handleSelectAll,
+    handleSelectRow,
+    handleRowClick,
+    handleMonthChange,
+    executeSearch,
+    handleSearch,
+    exitSearchMode,
+    loadMoreResults,
+    confirmPendingAction
+  };
+
+  return (
+    <DemandTableContext.Provider value={contextValue}>
+      {children}
+    </DemandTableContext.Provider>
+  );
+}
+
+// 自定义钩子，用于访问上下文
+export function useDemandTable() {
+  const context = useContext(DemandTableContext);
+  
+  if (context === undefined) {
+    throw new Error('useDemandTable must be used within a DemandTableProvider');
+  }
+  
+  return context;
+} 
