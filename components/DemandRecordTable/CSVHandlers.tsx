@@ -17,7 +17,8 @@ const CSVHandlers: React.FC = () => {
     setHasChanges,
     hasChanges,
     setPendingAction,
-    setConfirmDialogOpen
+    setConfirmDialogOpen,
+    toast
   } = useDemandTable();
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,10 +75,29 @@ const CSVHandlers: React.FC = () => {
           } else {
             setRecords(importedRecords);
             setHasChanges(true);
+            
+            // 添加导入成功的toast提示
+            toast({
+              title: "导入成功",
+              description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`
+            });
           }
+        } else {
+          // 添加无数据导入的toast提示
+          toast({
+            title: "导入提示",
+            description: "CSV文件中没有有效的记录数据",
+            variant: "default"
+          });
         }
       } catch (error) {
         console.error('解析CSV文件失败:', error);
+        // 添加导入失败的toast提示
+        toast({
+          title: "导入失败",
+          description: error instanceof Error ? error.message : "解析CSV文件时出错",
+          variant: "destructive"
+        });
       }
       
       // 重置文件输入
@@ -87,7 +107,7 @@ const CSVHandlers: React.FC = () => {
     };
     
     reader.readAsText(file);
-  }, [records, hasChanges, setRecords, setHasChanges, setPendingAction, setConfirmDialogOpen]);
+  }, [records, hasChanges, setRecords, setHasChanges, setPendingAction, setConfirmDialogOpen, toast]);
 
   // 导出为CSV
   const handleExportCSV = useCallback(() => {
@@ -120,7 +140,16 @@ const CSVHandlers: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }, [records, selectedRows, currentMonth]);
+    
+    // 添加导出成功的toast提示
+    toast({
+      title: "导出成功",
+      description: `已导出 ${recordsToExport.length} 条记录到CSV文件`
+    });
+    
+    // 释放URL对象
+    setTimeout(() => URL.revokeObjectURL(url), 100);
+  }, [records, selectedRows, currentMonth, toast]);
 
   return (
     <div className="flex flex-wrap gap-2 w-full sm:w-auto">

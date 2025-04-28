@@ -1,4 +1,13 @@
 import { DemandRecord } from '@/types/demand';
+import { ToastActionElement } from '../ui/toast';
+
+// Toast通知类型
+export interface ToastProps {
+  title?: string;
+  description?: string;
+  action?: ToastActionElement;
+  variant?: 'default' | 'destructive';
+}
 
 // 搜索结果类型
 export interface SearchResult {
@@ -37,6 +46,9 @@ export interface DemandTableContextType {
   setConfirmDialogOpen: (open: boolean) => void;
   pendingAction: PendingAction | null;
   setPendingAction: (action: PendingAction | null) => void;
+  
+  // 通知相关
+  toast: (props: ToastProps) => void;
   
   // 搜索相关
   searchTerm: string;

@@ -79,42 +79,62 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
     return false;
   }
   
-  return transaction(() => {
-    try {
-      // 清除当前月份的记录
-      console.log(`[调试] 清除月份 "${month}" 的现有记录`);
-      const deleteResult = execute('DELETE FROM demand_records WHERE month = ?', [month]);
-      console.log(`[调试] 删除了 ${deleteResult} 条现有记录`);
-      
-      // 准备批量插入的语句
-      const insertStmt = getDb().prepare(`
-        INSERT INTO demand_records (id, demand_id, description, created_at, month)
-        VALUES (@id, @demand_id, @description, @created_at, @month)
-      `);
-      
-      // 执行批量插入
-      let insertedCount = 0;
-      for (const demand of demands) {
-        const dbRecord = {
-          ...toSnakeCase(demand),
-          month
-        };
-        insertStmt.run(dbRecord);
-        insertedCount++;
+  try {
+    return transaction(() => {
+      try {
+        // 清除当前月份的记录
+        console.log(`[调试] 清除月份 "${month}" 的现有记录`);
+        const deleteResult = execute('DELETE FROM demand_records WHERE month = ?', [month]);
+        console.log(`[调试] 删除了 ${deleteResult} 条现有记录`);
+        
+        // 准备批量插入的语句
+        const insertStmt = getDb().prepare(`
+          INSERT INTO demand_records (id, demand_id, description, created_at, month)
+          VALUES (?, ?, ?, ?, ?)
+        `);
+        
+        // 执行批量插入
+        let insertedCount = 0;
+        for (const demand of demands) {
+          // 将驼峰命名的字段转换为蛇形命名
+          const record = toSnakeCase(demand) as any;
+          
+          insertStmt.run(
+            demand.id,
+            demand.demandId || '',
+            demand.description || '',
+            demand.createdAt instanceof Date ? demand.createdAt.toISOString() : new Date().toISOString(),
+            month
+          );
+          insertedCount++;
+          
+          // 每100条记录输出一次日志
+          if (insertedCount % 100 === 0) {
+            console.log(`[调试] 已插入 ${insertedCount}/${demands.length} 条记录`);
+          }
+        }
+        
+        console.log(`[调试] 成功插入 ${insertedCount} 条记录到月份 "${month}"`);
+        
+        // 验证插入后的记录数
+        const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE month = ?', [month]);
+        console.log(`[调试] 月份 "${month}" 现有记录数: ${recordCount?.count || 0}`);
+        
+        if (recordCount && recordCount.count === demands.length) {
+          return true;
+        } else {
+          console.error(`[错误] 记录数不匹配: 期望 ${demands.length}, 实际 ${recordCount?.count || 0}`);
+          throw new Error('保存后记录数不匹配');
+        }
+      } catch (error) {
+        console.error(`[错误] 保存需求记录事务内部失败:`, error);
+        throw error; // 确保事务回滚
       }
-      
-      console.log(`[调试] 成功插入 ${insertedCount} 条记录到月份 "${month}"`);
-      
-      // 验证插入后的记录数
-      const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE month = ?', [month]);
-      console.log(`[调试] 月份 "${month}" 现有记录数: ${recordCount?.count || 0}`);
-      
-      return true;
-    } catch (error) {
-      console.error(`[错误] 保存需求记录失败:`, error);
-      return false;
-    }
-  });
+    });
+  } catch (error) {
+    console.error(`[错误] 保存需求记录失败:`, error);
+    return false;
+  }
 };
 
 // 获取所有可用的月份

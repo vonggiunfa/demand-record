@@ -26,7 +26,17 @@ export async function POST(request: NextRequest) {
     // 解析请求体
     const requestData = await request.json();
     
-    console.log(`[API] 收到保存数据请求，年月: ${requestData?.yearMonth}`);
+    console.log(`[API] 收到保存数据请求，年月: ${requestData?.yearMonth}, 记录数: ${requestData?.data?.records?.length || 0}`);
+    
+    // 检查请求数据基本结构
+    if (!requestData || !requestData.yearMonth || !requestData.data || !requestData.data.records) {
+      console.error('[API] 请求数据缺少必要字段');
+      return NextResponse.json({
+        success: false,
+        message: "请求数据缺少必要字段",
+        error: "缺少yearMonth或records字段"
+      }, { status: 400 });
+    }
     
     // 验证请求数据
     const validationResult = SaveRequestSchema.safeParse(requestData);
@@ -42,7 +52,17 @@ export async function POST(request: NextRequest) {
     const { yearMonth, data } = validationResult.data;
     const records = data.records as DemandRecord[];
     
-    console.log(`[API] 准备保存 ${records.length} 条记录到月份 ${yearMonth}`);
+    // 空记录检查
+    if (records.length === 0) {
+      console.warn('[API] 尝试保存空记录列表');
+      return NextResponse.json({
+        success: true,
+        message: "没有记录需要保存",
+        recordCount: 0
+      });
+    }
+    
+    console.log(`[API] 验证通过，准备保存 ${records.length} 条记录到月份 ${yearMonth}`);
     
     // 保存数据
     const success = saveDemands(records, yearMonth);

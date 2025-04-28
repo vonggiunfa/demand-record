@@ -155,11 +155,20 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
       return next;
     });
     setHasChanges(true);
-  }, []);
+    
+    // 添加toast提示
+    toast({
+      title: "添加成功",
+      description: "已添加新记录，请填写内容后保存"
+    });
+  }, [toast]);
 
   // 删除选中记录
   const deleteSelectedRecords = useCallback(() => {
     if (selectedRows.size === 0) return;
+    
+    // 保存当前选中行数到本地变量
+    const deletedCount = selectedRows.size;
     
     setRecords(prev => prev.filter(record => !selectedRows.has(record.id)));
     setSelectedRows(new Set());
@@ -167,7 +176,7 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     
     toast({
       title: "删除成功",
-      description: `已删除 ${selectedRows.size} 条记录`
+      description: `已删除 ${deletedCount} 条记录`
     });
   }, [selectedRows, toast]);
 
@@ -335,11 +344,17 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
         const importedRecords = pendingAction.data as DemandRecord[];
         setRecords(importedRecords);
         setHasChanges(true);
+        
+        // 添加导入成功的toast提示
+        toast({
+          title: "导入成功",
+          description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`
+        });
         break;
     }
     
     setPendingAction(null);
-  }, [pendingAction, loadData, setCurrentMonth, setRecords, setHasChanges]);
+  }, [pendingAction, loadData, setCurrentMonth, setRecords, setHasChanges, toast]);
 
   // 上下文值对象
   const contextValue: DemandTableContextType = {
@@ -362,6 +377,9 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     setConfirmDialogOpen,
     pendingAction,
     setPendingAction,
+    
+    // 通知相关
+    toast,
     
     // 搜索状态
     searchTerm,
