@@ -10,7 +10,7 @@ export default function Home() {
         </p>
       </header>
       
-      <div className="max-w-[85vw] mx-auto bg-white rounded-lg shadow-md p-4">
+      <div className="max-w-[55vw] mx-auto mt-10">
         <DemandRecordTable />
       </div>
     </div>

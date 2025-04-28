@@ -4,31 +4,30 @@ import { cn } from '@/lib/utils';
 import { DemandRecord } from '@/types/demand';
 import { format } from 'date-fns';
 import {
-    FileDown,
-    FileUp,
-    Loader2,
-    Plus,
-    Save,
-    Trash2
+  FileDown,
+  FileUp,
+  Loader2,
+  Plus,
+  Save,
+  Trash2
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import MonthYearPicker from './MonthYearPicker';
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
 } from './ui/alert-dialog';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Textarea } from './ui/textarea';
 import { useToast } from './ui/use-toast';
 
 // 获取API基础路径
@@ -450,7 +449,7 @@ export default function DemandRecordTable() {
         <Table>
           <TableHeader className="sticky top-0 bg-background z-10">
             <TableRow>
-              <TableHead className="w-[50px] sticky left-0 bg-background z-20">
+              <TableHead className="w-[50px] sticky left-0 bg-background z-20 text-center">
                 <Checkbox
                   checked={isAllSelected}
                   onCheckedChange={handleSelectAll}
@@ -458,9 +457,9 @@ export default function DemandRecordTable() {
                   aria-label="全选"
                 />
               </TableHead>
-              <TableHead className="w-[200px]">需求ID</TableHead>
-              <TableHead>需求描述</TableHead>
-              <TableHead className="w-[180px]">创建时间</TableHead>
+              <TableHead className="w-[200px] text-center">需求ID</TableHead>
+              <TableHead className="text-center">需求描述</TableHead>
+              <TableHead className="w-[180px] text-center">创建时间</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -492,7 +491,7 @@ export default function DemandRecordTable() {
                     key={record.id}
                     className={cn("group", isSelected && "bg-muted/50")}
                   >
-                    <TableCell className="sticky left-0 bg-background group-hover:bg-muted/50 z-10">
+                    <TableCell className="sticky left-0 bg-background group-hover:bg-muted/50 z-10 text-center">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={(checked) => 
@@ -501,7 +500,7 @@ export default function DemandRecordTable() {
                         aria-label="选择行"
                       />
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {isSelected ? (
                         <Input
                           value={record.demandId}
@@ -509,26 +508,27 @@ export default function DemandRecordTable() {
                             handleRecordChange(record.id, 'demandId', e.target.value)
                           }
                           placeholder="输入需求ID"
+                          className="text-center"
                         />
                       ) : (
-                        <div className="h-10 py-2">{record.demandId || "-"}</div>
+                        <div className="h-10 py-2 text-center">{record.demandId || "-"}</div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {isSelected ? (
-                        <Textarea
+                        <Input
                           value={record.description}
                           onChange={(e) => 
                             handleRecordChange(record.id, 'description', e.target.value)
                           }
                           placeholder="输入需求描述"
-                          className="min-h-[40px]"
+                          className="text-center"
                         />
                       ) : (
-                        <div className="line-clamp-3">{record.description || "-"}</div>
+                        <div className="line-clamp-3 text-center">{record.description || "-"}</div>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="text-center">
                       {format(record.createdAt, 'yyyy-MM-dd HH:mm')}
                     </TableCell>
                   </TableRow>
