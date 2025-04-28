@@ -15,6 +15,7 @@
 
 - [组件](./client/components/) - 前端UI组件文档
   - [DemandRecordTable](./client/components/DemandRecordTable.md) - 需求记录表格组件
+- [Next.js 配置](./client/next-config.md) - Next.js 配置说明及对客户端的影响
 
 ### 🖥️ 服务端
 
@@ -33,6 +34,7 @@
 2. [需求记录表格组件](./client/components/DemandRecordTable.md) - 了解主要界面组件
 3. [API文档](./server/api/demand-records.md) - 了解系统API
 4. [数据库模式](./database/sqlite-schema.md) - 了解数据存储方式
+5. [Next.js 配置](./client/next-config.md) - 了解系统配置
 
 ## 贡献文档
 
@@ -56,8 +58,9 @@
 docs/
 ├── README.md                         # 本文件，文档总索引
 ├── client/                           # 客户端相关文档
-│   └── components/                   # 客户端组件文档
-│       └── DemandRecordTable.md      # 需求记录表格组件文档
+│   ├── components/                   # 客户端组件文档
+│   │   └── DemandRecordTable.md      # 需求记录表格组件文档
+│   └── next-config.md                # Next.js配置文档
 ├── server/                           # 服务端相关文档
 │   ├── api/                          # API文档
 │   │   └── demand-records.md         # 需求记录API文档

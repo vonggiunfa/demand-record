@@ -192,4 +192,51 @@ function DemandPage() {
 
 ## 相关组件
 
-- [MonthYearPicker](./MonthYearPicker.md) - 年月选择器组件 
+- [MonthYearPicker](./MonthYearPicker.md) - 年月选择器组件
+
+## Next.js 配置相关说明
+
+DemandRecordTable 组件的正常运行依赖于正确的 Next.js 配置，特别是与 API 路径相关的配置。
+
+### basePath 配置
+
+项目的 `next.config.mjs` 中配置了 `basePath: '/demand-record'`，这会影响组件中的 API 请求路径。组件内部已经做了适配，会自动将 basePath 添加到 API 请求 URL 中：
+
+```typescript
+// 组件内部处理 basePath 的示例代码
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '/demand-record';
+const apiUrl = `${basePath}/api/load-data?yearMonth=${yearMonth}`;
+```
+
+### 配置注意事项
+
+1. **环境变量**：如果需要在不同环境下使用不同的 basePath，可通过 `NEXT_PUBLIC_BASE_PATH` 环境变量覆盖默认值
+
+2. **API 请求路径**：组件内所有 API 请求都会自动添加 basePath 前缀，包括：
+   - 加载数据：`${basePath}/api/load-data`
+   - 保存数据：`${basePath}/api/save-data`
+   - 获取年月列表：`${basePath}/api/year-months`
+
+3. **部署环境差异**：
+   - 开发环境：通常使用默认的 basePath
+   - 生产环境：可能需要根据部署路径调整 basePath
+
+4. **路径自动检测**：组件内置了路径检测机制，会在 API 请求失败时尝试不同的路径前缀，以适应不同的部署环境
+
+### 相关配置文件
+
+请参考项目根目录下的 `next.config.mjs` 文件了解完整配置：
+
+```javascript
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  devIndicators: false,
+  basePath: '/demand-record',
+}
+
+export default nextConfig
+```
+
+组件内部已经做了自适应处理，可以在不同的部署环境中正常工作。如果需要修改 basePath 配置，请确保相应更新组件中使用的默认 basePath 值，以确保 API 请求路径正确。
+
+更多配置详情请参考[Next.js 配置文档](../next-config.md)。 
