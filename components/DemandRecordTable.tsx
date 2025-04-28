@@ -207,6 +207,25 @@ export default function DemandRecordTable() {
     });
   }, []);
 
+  // 处理点击行
+  const handleRowClick = useCallback((id: string, event: React.MouseEvent) => {
+    // 如果点击的是输入框、按钮或复选框，不触发行选择
+    const target = event.target as HTMLElement;
+    if (target.closest('input') || target.closest('button') || target.closest('[role="checkbox"]')) {
+      return;
+    }
+    
+    setSelectedRows(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   // 处理月份变更
   const handleMonthChange = useCallback((newMonth: string) => {
     if (newMonth === currentMonth) return;
@@ -489,7 +508,13 @@ export default function DemandRecordTable() {
                 return (
                   <TableRow 
                     key={record.id}
-                    className={cn("group", isSelected && "bg-muted/50")}
+                    className={cn(
+                      "group",
+                      isSelected && "bg-muted/50",
+                      "cursor-pointer",
+                      "hover:bg-muted/30"
+                    )}
+                    onClick={(e) => handleRowClick(record.id, e)}
                   >
                     <TableCell 
                       className="sticky left-0 z-10 text-center p-0"
@@ -513,11 +538,12 @@ export default function DemandRecordTable() {
                           onChange={(e) => 
                             handleRecordChange(record.id, 'demandId', e.target.value)
                           }
+                          onClick={(e) => e.stopPropagation()}
                           placeholder="输入需求ID"
-                          className="text-center"
+                          className="text-center h-10"
                         />
                       ) : (
-                        <div className="h-10 py-2 text-center">{record.demandId || "-"}</div>
+                        <div className="h-10 flex items-center justify-center">{record.demandId || "-"}</div>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
@@ -527,11 +553,12 @@ export default function DemandRecordTable() {
                           onChange={(e) => 
                             handleRecordChange(record.id, 'description', e.target.value)
                           }
+                          onClick={(e) => e.stopPropagation()}
                           placeholder="输入需求描述"
-                          className="text-center"
+                          className="text-center h-10"
                         />
                       ) : (
-                        <div className="line-clamp-3 text-center">{record.description || "-"}</div>
+                        <div className="h-10 flex items-center justify-center overflow-hidden">{record.description || "-"}</div>
                       )}
                     </TableCell>
                     <TableCell className="text-center">
