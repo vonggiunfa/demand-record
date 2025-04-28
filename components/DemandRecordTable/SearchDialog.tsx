@@ -2,13 +2,12 @@
 
 import { format } from 'date-fns';
 import { Loader2, Search, X } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import {
   Dialog,
   DialogClose,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle
@@ -45,12 +44,23 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
     searchResults,
     isSearchLoading,
     loadMoreResults,
-    exitSearchMode
+    exitSearchMode,
+    setSearchResults
   } = useDemandTable();
 
   // 本地状态，仅在对话框内使用
-  const [localSearchTerm, setLocalSearchTerm] = useState(globalSearchTerm);
-  const [localSearchType, setLocalSearchType] = useState<SearchType>(globalSearchType);
+  const [localSearchTerm, setLocalSearchTerm] = useState('');
+  const [localSearchType, setLocalSearchType] = useState<SearchType>('id');
+
+  // 当对话框打开时，重置本地状态
+  useEffect(() => {
+    if (open) {
+      setLocalSearchTerm('');
+      setLocalSearchType('id');
+      // 清空全局搜索结果
+      setSearchResults({ records: [], total: 0, hasMore: false });
+    }
+  }, [open, setSearchResults]);
 
   // 执行搜索
   const executeSearch = (e?: React.FormEvent) => {
@@ -68,11 +78,19 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
   // 清除搜索
   const clearSearch = () => {
     setLocalSearchTerm('');
+    // 清空搜索结果
+    setSearchResults({ records: [], total: 0, hasMore: false });
   };
 
   // 关闭对话框时清理
   const handleClose = () => {
     onOpenChange(false);
+    // 清空搜索状态
+    setLocalSearchTerm('');
+    setLocalSearchType('id');
+    // 清空全局搜索结果
+    setSearchResults({ records: [], total: 0, hasMore: false });
+    // 退出搜索模式
     exitSearchMode();
   };
 
@@ -95,6 +113,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
                 onChange={(e) => setLocalSearchTerm(e.target.value)}
                 placeholder="输入搜索关键词..."
                 className="pr-8"
+                autoFocus
               />
               {localSearchTerm && (
                 <button
@@ -166,7 +185,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
                   <TableRow>
                     <TableCell colSpan={4} className="h-24 text-center">
                       <div className="text-muted-foreground">
-                        {globalSearchTerm ? '没有找到匹配的记录' : '请输入搜索条件开始搜索'}
+                        {localSearchTerm ? '没有找到匹配的记录' : '请输入搜索条件开始搜索'}
                       </div>
                     </TableCell>
                   </TableRow>
