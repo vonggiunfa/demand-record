@@ -67,6 +67,7 @@ export default function MonthYearPicker({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
+            size="sm"
             variant="outline"
             className={cn(
               "justify-between text-left font-normal",

@@ -5,21 +5,21 @@ import { Loader2, Search, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
 } from '../ui/dialog';
 import { Input } from '../ui/input';
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "../ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { useDemandTable } from './DemandTableContext';
@@ -44,7 +44,8 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
     handleSearch,
     searchResults,
     isSearchLoading,
-    loadMoreResults
+    loadMoreResults,
+    exitSearchMode
   } = useDemandTable();
 
   // 本地状态，仅在对话框内使用
@@ -60,7 +61,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
     if (localSearchTerm.trim()) {
       setGlobalSearchTerm(localSearchTerm);
       setGlobalSearchType(localSearchType);
-      handleSearch(localSearchTerm, localSearchType, 0);
+      handleSearch(localSearchTerm, localSearchType, 0, false);
     }
   };
 
@@ -72,19 +73,17 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
   // 关闭对话框时清理
   const handleClose = () => {
     onOpenChange(false);
+    exitSearchMode();
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>高级搜索</DialogTitle>
-          <DialogDescription>
-            搜索全部月份的需求记录，支持模糊匹配
-          </DialogDescription>
+          <DialogTitle className="text-center">搜索</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col space-y-4 overflow-auto">
+        <div className="flex flex-col space-y-4 overflow-auto px-2">
           {/* 搜索表单 */}
           <form 
             className="flex items-center gap-2 sticky top-0 bg-background py-2 z-10"
@@ -210,12 +209,6 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
             </div>
           )}
         </div>
-
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline" onClick={handleClose}>关闭</Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -4,7 +4,6 @@ import React, { useEffect } from 'react';
 import ConfirmDialog from './ConfirmDialog';
 import { DemandTableProvider, useDemandTable } from './DemandTableContext';
 import TableComponent from './TableBody';
-import TableHeader from './TableHeader';
 import TableToolbar from './TableToolbar';
 
 // 内部组件，会在提供者内部使用
@@ -20,7 +19,6 @@ const DemandTableContent: React.FC = () => {
   return (
     <div className="space-y-4">
       <TableToolbar />
-      <TableHeader />
       <TableComponent />
       <ConfirmDialog />
     </div>

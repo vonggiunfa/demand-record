@@ -63,7 +63,7 @@ export interface DemandTableContextType {
   handleSelectRow: (id: string, checked: boolean) => void;
   handleRowClick: (id: string, event: React.MouseEvent) => void;
   handleMonthChange: (newMonth: string) => void;
-  handleSearch: (term: string, type: SearchType, offset?: number) => Promise<void>;
+  handleSearch: (term: string, type: SearchType, offset?: number, shouldEnterSearchMode?: boolean) => Promise<void>;
   executeSearch: (e?: React.FormEvent) => void;
   exitSearchMode: () => void;
   loadMoreResults: () => void;

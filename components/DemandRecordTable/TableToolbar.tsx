@@ -61,13 +61,11 @@ const TableToolbar: React.FC = () => {
       <div className="flex flex-wrap items-center gap-2 ml-auto">
         {/* 年月选择器 */}
         {!isSearchMode && (
-          <div className="mr-2">
-            <MonthYearPicker
-              value={currentMonth}
-              onChange={handleMonthChange}
-              availableMonths={availableMonths}
-            />
-          </div>
+          <MonthYearPicker
+            value={currentMonth}
+            onChange={handleMonthChange}
+            availableMonths={availableMonths}
+          />
         )}
         
         {/* 搜索按钮 */}

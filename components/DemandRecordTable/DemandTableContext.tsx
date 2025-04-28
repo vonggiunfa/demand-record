@@ -241,19 +241,18 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     }
   }, [hasChanges, loadData]);
 
-  // 基础搜索，改为直接调用高级搜索对话框
+  // 基础搜索逻辑已移除，由高级搜索对话框完全接管
   const executeSearch = useCallback((e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
     }
     
-    // 简化逻辑，因为不再需要主界面搜索
-    // 此方法保留用于兼容性，但不再提供实际功能
-    console.log('已移除主界面搜索，请使用高级搜索对话框');
+    // 此方法保留用于类型兼容性，但不再提供实际功能
+    // 所有搜索功能已集中到高级搜索对话框中
   }, []);
 
   // 搜索上下文，通过API搜索所有月份数据
-  const handleSearch = useCallback(async (term: string, type: SearchType, offset: number = 0) => {
+  const handleSearch = useCallback(async (term: string, type: SearchType, offset: number = 0, shouldEnterSearchMode: boolean = false) => {
     if (!term.trim()) return;
     
     setIsSearchLoading(true);
@@ -278,7 +277,11 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
         }
         
         setSearchOffset(offset + data.data.records.length);
-        setIsSearchMode(true);
+        
+        // 由调用者控制是否进入搜索模式，默认不进入
+        if (shouldEnterSearchMode) {
+          setIsSearchMode(true);
+        }
       } else {
         toast({
           title: "搜索失败",
@@ -302,7 +305,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
   const loadMoreResults = useCallback(() => {
     if (!searchTerm.trim() || isSearchLoading || !searchResults.hasMore) return;
     
-    handleSearch(searchTerm, searchType, searchOffset);
+    // 加载更多结果时不要重复设置搜索模式
+    handleSearch(searchTerm, searchType, searchOffset, false);
   }, [searchTerm, searchType, searchOffset, isSearchLoading, searchResults.hasMore, handleSearch]);
 
   // 退出搜索模式
