@@ -19,6 +19,18 @@ DemandRecordTable 是一个用于记录和管理需求的表格组件，提供�
 - **文本居中设计**：所有表头、单元格内容均居中显示，保持界面整洁一致
 - **单行输入控件**：所有输入字段使用单行输入框，简化用户操作体验
 - **未保存变更提示**：切换月份或导入数据时，如有未保存的更改会提示用户
+- **操作反馈通知**：在用户执行关键操作后提供即时的Toast通知反馈
+
+## 通知功能
+
+组件整合了Toast通知功能，在用户进行关键操作后提供即时反馈：
+
+- **添加记录**：添加新记录时显示"添加成功"提示
+- **删除记录**：删除记录后显示"删除成功"及删除数量的提示
+- **保存数据**：保存数据后显示"保存成功"或"保存失败"提示
+- **CSV导入导出**：执行CSV导入导出操作后显示相应的成功/失败提示
+
+这些通知及时反馈用户操作结果，提升了整体用户体验。通知会在显示5秒后自动消失。
 
 ## 组件结构
 
@@ -62,16 +74,26 @@ interface DemandRecord {
 
 ### 基本使用
 
+目前在应用中的实际使用方式：
+
 ```tsx
 import DemandRecordTable from '@/components/DemandRecordTable';
 
-function DemandPage() {
+export default function Home() {
   return (
-    <div className="container mx-auto">
-      <h1 className="text-2xl font-bold mb-4">需求记录管理</h1>
-      <DemandRecordTable />
+    <div className="container mx-auto py-6 px-4 md:px-6 lg:px-8">
+      <header className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-center">需求记录表</h1>
+        <p className="text-center text-muted-foreground mt-2">
+          记录需求，助力业务增长
+        </p>
+      </header>
+      
+      <div className="max-w-[55vw] mx-auto mt-10">
+        <DemandRecordTable />
+      </div>
     </div>
-  );
+  )
 }
 ```
 
@@ -112,10 +134,9 @@ function DemandPage() {
 
 ## 搜索功能
 
-组件提供了两种搜索方式：
+组件提供了全面的高级搜索功能，通过独立对话框进行跨月份的全数据搜索。
 
-1. **简单搜索**：在表格工具栏中直接搜索当前月份的数据
-2. **高级搜索**：通过对话框进行跨月份的全数据搜索
+> **注意**：原计划的简单搜索功能已被移除，所有搜索功能现由高级搜索对话框统一接管，以提供更一致的用户体验。
 
 ### 高级搜索对话框
 
@@ -141,7 +162,7 @@ function DemandPage() {
 ### 搜索交互流程
 
 1. **打开高级搜索**：
-   - 用户点击搜索栏右侧的"高级搜索"按钮
+   - 用户点击搜索栏的高级搜索按钮
    - 系统打开高级搜索对话框，焦点自动定位到搜索输入框
 
 2. **执行搜索**：
@@ -234,15 +255,8 @@ function DemandPage() {
 2. 如有未保存的修改，系统会弹出确认对话框
 3. 确认后系统加载所选年月的数据，取消则保持当前状态
 
-### 搜索需求（简单搜索）
-1. 在工具栏的搜索框中输入搜索关键词
-2. 选择搜索类型（需求ID或描述内容）
-3. 点击搜索按钮或按回车键执行搜索
-4. 表格显示当前月份中匹配的记录
-5. 显示搜索结果状态和返回按钮
-
-### 高级搜索（跨月份）
-1. 点击搜索栏右侧的"高级搜索"按钮
+### 搜索需求
+1. 点击搜索栏的高级搜索按钮
 2. 在搜索对话框中输入搜索关键词
 3. 选择搜索类型（需求ID/描述内容）
 4. 点击搜索按钮执行搜索
@@ -292,6 +306,7 @@ function DemandPage() {
    - `isSearchLoading`: 是否正在执行搜索
    - `confirmDialogOpen`: 确认对话框是否打开
    - `pendingAction`: 待确认的操作信息
+   - `toast`: 用于显示通知提醒的方法
 
 3. **操作方法**：
    - `loadData`: 加载指定月份的数据
@@ -313,6 +328,17 @@ function DemandPage() {
 API请求路径中的`API_BASE_PATH`会自动处理前缀，适配不同部署环境。
 
 详细的API文档请参考[服务端API文档](../../server/api/demand-records.md)。
+
+## API实现
+
+所有API接口均采用Next.js的App Router API路由实现，位于`app/api`目录：
+
+- `app/api/load-data/route.ts` - 实现加载指定年月数据的功能
+- `app/api/save-data/route.ts` - 实现保存数据功能
+- `app/api/year-months/route.ts` - 实现获取可用年月列表功能
+- `app/api/search/route.ts` - 实现搜索功能，支持按ID或描述搜索
+
+所有API路由都实现了完善的参数验证和错误处理，确保返回统一格式的响应。
 
 ## CSV导入导出
 
@@ -352,4 +378,11 @@ API请求路径中的`API_BASE_PATH`会自动处理前缀，适配不同部署�
 6. **搜索历史记录**: 记录用户最近的搜索记录，方便快速重复搜索
 7. **高级搜索筛选**: 在高级搜索中添加更多筛选条件，如时间范围
 
-## bug修复点：
+## 近期更新
+
+1. **添加通知功能**：为关键操作添加了即时的 Toast 通知，如添加、删除、保存等操作
+2. **修复Toaster组件引入**：确保 Toaster 组件在根布局中正确引入，解决通知无法显示的问题
+3. **优化通知显示时间**：将通知显示时间从默认值调整为更合理的5秒
+4. **CSV导入导出优化**：优化了CSV导入导出功能的错误处理和成功提示
+5. **修复类型定义**：更新了类型定义以包含 toast 函数
+6. **搜索功能优化**：简化了搜索流程，统一由高级搜索对话框接管所有搜索功能
