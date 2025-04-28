@@ -267,17 +267,17 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
       if (data.success) {
         if (offset === 0) {
           // 清空当前结果，显示新结果
-          setSearchResults(data.results);
+          setSearchResults(data.data);
         } else {
           // 追加到当前结果
           setSearchResults(prev => ({
-            records: [...prev.records, ...data.results.records],
-            total: data.results.total,
-            hasMore: data.results.hasMore
+            records: [...prev.records, ...data.data.records],
+            total: data.data.total,
+            hasMore: data.data.hasMore
           }));
         }
         
-        setSearchOffset(offset + data.results.records.length);
+        setSearchOffset(offset + data.data.records.length);
         setIsSearchMode(true);
       } else {
         toast({
