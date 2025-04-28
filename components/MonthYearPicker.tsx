@@ -69,7 +69,7 @@ export default function MonthYearPicker({
           <Button
             variant="outline"
             className={cn(
-              "justify-between min-w-[140px] text-left font-normal",
+              "justify-between text-left font-normal",
             )}
           >
             {`${currentYear}年${String(currentMonth).padStart(2, '0')}月`}

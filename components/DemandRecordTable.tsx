@@ -424,6 +424,13 @@ export default function DemandRecordTable() {
             保存
           </Button>
         </div>
+
+        {/* 年月选择器 */}
+        <MonthYearPicker
+          value={currentMonth}
+          onChange={handleMonthChange}
+          availableMonths={availableMonths}
+        />
         
         <div className="flex flex-wrap gap-2">
           <Button
@@ -453,16 +460,7 @@ export default function DemandRecordTable() {
           />
         </div>
       </div>
-      
-      {/* 年月选择器 */}
-      <div className="mb-4">
-        <MonthYearPicker
-          value={currentMonth}
-          onChange={handleMonthChange}
-          availableMonths={availableMonths}
-        />
-      </div>
-      
+    
       {/* 表格区域 */}
       <div className="border rounded-md overflow-auto max-h-[70vh]">
         <Table>
