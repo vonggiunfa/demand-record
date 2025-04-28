@@ -12,7 +12,7 @@ export default function Home() {
         </p>
       </header>
       
-      <div className="max-w-[52vw] mx-auto bg-white rounded-lg shadow-md">
+      <div className="max-w-[62vw] mx-auto bg-white rounded-lg shadow-md">
         <DemandRecordTable />
       </div>
       

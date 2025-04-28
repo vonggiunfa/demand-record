@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { Download, Plus, Save, Trash2, Upload } from 'lucide-react';
 import React, { ChangeEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from "sonner";
+import MonthYearPicker from './MonthYearPicker';
 
 // 定义数据类型
 interface DemandRecord {
@@ -140,6 +141,7 @@ const getApiBasePath = (): string => {
  * 3. 支持导入导出CSV数据
  * 4. 只有选中行才能编辑需求ID和描述
  * 5. 支持保存数据到本地JSON文件，按月份组织
+ * 6. 支持按年月筛选需求数据
  */
 const DemandRecordTable = () => {
   const [rows, setRows] = useState<DemandRecord[]>([])
@@ -149,6 +151,7 @@ const DemandRecordTable = () => {
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [apiBasePath, setApiBasePath] = useState('/demand-record')
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date())
   const inputRefs = useRef<{[key: string]: HTMLInputElement | HTMLTextAreaElement | null}>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const tableContainerRef = useRef<HTMLDivElement>(null)
@@ -665,11 +668,14 @@ const DemandRecordTable = () => {
     };
   }, [isClient]);
 
-  // 获取当前月份的文件名
-  const getCurrentMonthFileName = useCallback(() => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}.json`;
-  }, []);
+  // 获取当前选择的月份的文件名
+  const getSelectedMonthFileName = useCallback(() => {
+    const year = selectedMonth.getFullYear();
+    const month = String(selectedMonth.getMonth() + 1).padStart(2, '0');
+    const fileName = `${year}-${month}.json`;
+    console.log(`生成文件名: ${fileName}, 基于选中月份:`, selectedMonth);
+    return fileName;
+  }, [selectedMonth]);
 
   // 保存数据到JSON文件
   const saveToJsonFile = useCallback(async () => {
@@ -687,7 +693,7 @@ const DemandRecordTable = () => {
         records: rows
       };
 
-      const fileName = getCurrentMonthFileName();
+      const fileName = getSelectedMonthFileName();
       let apiUrl = `${apiBasePath}/api/save-data`;
       console.log(`正在保存数据到文件: ${fileName}`, {
         recordsCount: rows.length,
@@ -759,18 +765,23 @@ const DemandRecordTable = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [rows, getCurrentMonthFileName, apiBasePath]);
+  }, [rows, getSelectedMonthFileName, apiBasePath]);
 
   // 从JSON文件加载数据
   const loadFromJsonFile = useCallback(async () => {
     setIsLoading(true);
     
     try {
-      const fileName = getCurrentMonthFileName();
+      const fileName = getSelectedMonthFileName();
+      // 从文件名中提取月份部分用于调试
+      const monthPart = fileName.replace('.json', '');
+      
       let apiUrl = `${apiBasePath}/api/load-data?fileName=${fileName}`;
       console.log(`尝试从服务器加载数据文件:`, {
         fileName,
-        apiUrl
+        monthPart,
+        apiUrl,
+        selectedMonth
       });
       
       // 首次尝试带有basePath的URL
@@ -786,6 +797,8 @@ const DemandRecordTable = () => {
           // 如果能解析，并且消息是"文件不存在"，那么API路径是正确的，只是文件不存在
           if (result.message === '文件不存在' || result.message === '数据目录不存在') {
             console.log('文件不存在，这是正常的');
+            // 文件不存在，清空当前表格数据
+            setRows([]);
             return false;
           }
         } catch (e) {
@@ -807,6 +820,8 @@ const DemandRecordTable = () => {
       // 如果状态码是404，说明文件不存在，这是正常的情况
       if (response.status === 404) {
         console.log('当前月份没有保存的数据');
+        // 清空当前表格数据
+        setRows([]);
         return false;
       }
       
@@ -820,12 +835,16 @@ const DemandRecordTable = () => {
         result = JSON.parse(responseText);
       } catch (parseError) {
         console.error('解析响应JSON失败:', parseError);
+        // 解析失败，清空表格数据
+        setRows([]);
         throw new Error(`服务器返回了无效的JSON数据: ${responseText.substring(0, 100)}...`);
       }
       
       if (!response.ok) {
         const errorMessage = result?.message || '加载失败';
         const errorDetails = result?.details || '';
+        // API请求失败，清空表格数据
+        setRows([]);
         throw new Error(`${errorMessage}${errorDetails ? `: ${errorDetails}` : ''}`);
       }
       
@@ -836,29 +855,58 @@ const DemandRecordTable = () => {
           createdAt: new Date(record.createdAt)
         }));
         
+        console.log(`成功加载月份 [${monthPart}] 的数据: ${loadedRows.length} 条记录`);
+        
         setRows(loadedRows);
         toast.success(`成功加载 ${loadedRows.length} 条数据`);
         return true;
       } else {
+        // 加载不成功，清空表格数据
+        setRows([]);
         throw new Error(result.message || '加载操作未成功完成');
       }
     } catch (error: any) {
       console.error('加载数据时发生错误', error);
       toast.error(`加载失败: ${error instanceof Error ? error.message : '未知错误'}`);
+      // 出现错误，清空表格数据
+      setRows([]);
       return false;
     } finally {
       setIsLoading(false);
     }
-  }, [getCurrentMonthFileName, apiBasePath, setApiBasePath]);
+  }, [getSelectedMonthFileName, apiBasePath, setApiBasePath, selectedMonth]);
 
-  // 在组件挂载后加载当前月份的数据
+  // 处理月份选择变化
+  const handleMonthChange = useCallback((date: Date) => {
+    // 确保日期设置为当月的第一天
+    const newDate = new Date(date);
+    newDate.setDate(1);
+    
+    console.log(`月份选择变更: ${format(selectedMonth, 'yyyy-MM')} -> ${format(newDate, 'yyyy-MM')}`);
+    
+    // 只有当月份实际变化时才更新状态
+    if (selectedMonth.getFullYear() !== newDate.getFullYear() || 
+        selectedMonth.getMonth() !== newDate.getMonth()) {
+      setSelectedMonth(newDate);
+      // 清空选中行状态
+      setSelectedRows(new Set());
+      setSelectAll(false);
+      
+      // 立即清空表格数据，等待新数据加载
+      setRows([]);
+    }
+  }, [selectedMonth]);
+
+  // 在选择的月份变化后重新加载数据
   useEffect(() => {
     if (isClient) {
       loadFromJsonFile().catch(error => {
         console.warn('加载数据失败，这可能是正常的（如果是第一次使用）', error);
+        // 确保在加载失败时也清空表格数据
+        setRows([]);
       });
     }
-  }, [isClient, loadFromJsonFile]);
+  }, [isClient, loadFromJsonFile, selectedMonth]);
 
   // 当组件挂载时初始化
   useEffect(() => {
@@ -919,6 +967,13 @@ const DemandRecordTable = () => {
               {hasSelected ? `已选择 ${selectedCount}/${totalCount} 行` : ''}
             </span>
           </div>
+          
+          {/* 添加年月选择器 */}
+          <MonthYearPicker 
+            value={selectedMonth}
+            onChange={handleMonthChange}
+          />
+          
           <div className="flex space-x-2">
             <Button 
               variant="outline" 

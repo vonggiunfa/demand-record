@@ -1,133 +1,90 @@
-import fs from 'fs';
+import { formatMonth } from '@/lib/db';
+import { getDemandsByMonth } from '@/lib/demandService';
 import { NextRequest, NextResponse } from 'next/server';
-import path from 'path';
 
 export async function GET(req: NextRequest) {
   try {
+    const url = req.url;
+    const searchParams = req.nextUrl.searchParams;
+    
     console.log('开始处理加载数据请求', {
-      url: req.url,
+      url,
       method: req.method,
-      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/demand-record'
+      basePath: process.env.NEXT_PUBLIC_BASE_PATH || '/demand-record',
+      searchParams: Object.fromEntries(searchParams.entries())
     });
-    // 获取文件名参数
-    const fileName = req.nextUrl.searchParams.get('fileName');
-    console.log(`请求的文件名: ${fileName}`);
     
-    if (!fileName) {
-      console.error('文件名参数缺失');
+    // 获取文件名或月份参数
+    const fileName = searchParams.get('fileName');
+    const monthParam = searchParams.get('month');
+    
+    let month;
+    let originSource = '';
+    
+    // 从文件名解析月份，优先使用fileName参数
+    if (fileName && fileName.endsWith('.json')) {
+      month = fileName.replace('.json', '');
+      originSource = 'fileName';
+      console.log(`[调试] 从文件名 "${fileName}" 解析出月份: "${month}"`);
+    } else if (monthParam) {
+      // 使用month参数
+      month = monthParam;
+      originSource = 'monthParam';
+      console.log(`[调试] 从month参数获取月份: "${month}"`);
+    } else {
+      // 使用当前月份
+      month = formatMonth(new Date());
+      originSource = 'currentDate';
+      console.log(`[调试] 使用当前日期生成月份: "${month}"`);
+    }
+    
+    console.log(`[调试] 最终使用的月份参数: "${month}" (来源: ${originSource})`);
+    
+    // 验证月份格式
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      console.error('[错误] 月份格式错误', { month, originSource });
       return NextResponse.json(
-        { success: false, message: '文件名不能为空' },
+        { success: false, message: '月份格式不正确，应为 yyyy-mm' },
         { status: 400 }
       );
     }
     
-    // 确保文件名格式正确 (yyyy-mm.json)
-    if (!/^\d{4}-\d{2}\.json$/.test(fileName)) {
-      console.error('文件名格式错误', { fileName });
-      return NextResponse.json(
-        { success: false, message: '文件名格式不正确，应为 yyyy-mm.json' },
-        { status: 400 }
-      );
-    }
-    
-    // 构建文件路径
-    const dataDir = path.resolve(process.cwd(), 'data-json');
-    const filePath = path.resolve(dataDir, fileName);
-    
-    console.log('加载路径:', { dataDir, filePath, cwd: process.cwd() });
-    
-    // 检查目录是否存在
-    if (!fs.existsSync(dataDir)) {
-      console.log('数据目录不存在:', dataDir);
-      return NextResponse.json(
-        { success: false, message: '数据目录不存在' },
-        { status: 404 }
-      );
-    }
-    
-    // 检查文件是否存在 - 使用同步方法
-    if (!fs.existsSync(filePath)) {
-      console.log('文件不存在:', filePath);
-      return NextResponse.json(
-        { success: false, message: '文件不存在' },
-        { status: 404 }
-      );
-    }
-    
-    // 验证文件可读
     try {
-      fs.accessSync(filePath, fs.constants.R_OK);
-      console.log('文件可读:', filePath);
-    } catch (accessError) {
-      console.error('文件访问错误:', accessError);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: `文件不可读: ${accessError instanceof Error ? accessError.message : String(accessError)}`,
-          details: String(accessError)
-        },
-        { status: 500 }
-      );
-    }
-    
-    try {
-      // 读取文件内容 - 使用同步方法
-      const fileContent = fs.readFileSync(filePath, 'utf-8');
-      console.log(`文件读取成功: ${fileContent.length} 字节`);
+      // 从数据库获取数据
+      console.log(`[调试] 准备从数据库获取月份 "${month}" 的记录`);
+      const records = getDemandsByMonth(month);
+      console.log(`[调试] 成功从数据库读取 ${records.length} 条记录, 月份="${month}"`);
       
-      if (fileContent.trim().length === 0) {
-        console.error('文件内容为空');
-        return NextResponse.json(
-          { success: false, message: '文件内容为空' },
-          { status: 500 }
-        );
+      if (records.length > 0) {
+        console.log(`[调试] 月份 "${month}" 的第一条记录:`, JSON.stringify(records[0], null, 2));
       }
       
-      // 解析JSON
-      let data;
-      try {
-        data = JSON.parse(fileContent);
-        console.log(`解析JSON成功, 记录数: ${data?.records?.length || 0}`);
-      } catch (jsonError) {
-        console.error('JSON解析错误:', jsonError);
-        return NextResponse.json(
-          { 
-            success: false, 
-            message: `JSON解析失败: ${jsonError instanceof Error ? jsonError.message : String(jsonError)}`,
-            details: String(jsonError)
-          },
-          { status: 500 }
-        );
-      }
-      
-      // 检查数据结构
-      if (!data || !data.records || !Array.isArray(data.records)) {
-        console.error('数据结构无效', data);
-        return NextResponse.json(
-          { success: false, message: '数据结构无效: 缺少records数组' },
-          { status: 500 }
-        );
-      }
-      
-      console.log('数据加载成功');
       return NextResponse.json({
         success: true,
         message: '数据加载成功',
-        data
+        data: {
+          lastUpdated: new Date().toISOString(),
+          records,
+          debug: {
+            month,
+            originSource,
+            recordCount: records.length
+          }
+        }
       });
-    } catch (fsError) {
-      console.error('文件读取或解析错误:', fsError);
+    } catch (dbError) {
+      console.error('[错误] 数据库查询错误:', dbError);
       return NextResponse.json(
         { 
           success: false, 
-          message: `文件读取或解析失败: ${fsError instanceof Error ? fsError.message : '未知错误'}`,
-          details: String(fsError)
+          message: `数据库查询失败: ${dbError instanceof Error ? dbError.message : String(dbError)}`,
+          details: String(dbError)
         },
         { status: 500 }
       );
     }
   } catch (error) {
-    console.error('API加载数据错误:', error);
+    console.error('[错误] API加载数据错误:', error);
     return NextResponse.json(
       { 
         success: false, 
