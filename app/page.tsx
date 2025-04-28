@@ -1,3 +1,5 @@
+import DemandRecordTable from '@/components/DemandRecordTable';
+
 export default function Home() {
   return (
     <div className="container mx-auto py-6 px-4 md:px-6 lg:px-8">
@@ -8,8 +10,8 @@ export default function Home() {
         </p>
       </header>
       
-      <div className="max-w-[62vw] mx-auto bg-white rounded-lg shadow-md">
-        {/*  */}
+      <div className="max-w-[85vw] mx-auto bg-white rounded-lg shadow-md p-4">
+        <DemandRecordTable />
       </div>
     </div>
   )
