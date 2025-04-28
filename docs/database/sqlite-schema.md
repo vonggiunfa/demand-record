@@ -41,6 +41,30 @@ CREATE TABLE demand_records (
 ```sql
 -- 按年月索引，用于加速查询
 CREATE INDEX idx_demand_records_year_month ON demand_records(year_month);
+
+-- 按需求ID索引，用于加速ID搜索
+CREATE INDEX idx_demand_records_demand_id ON demand_records(demand_id);
+
+-- 按描述字段创建FTS5虚拟表，用于全文搜索
+CREATE VIRTUAL TABLE demand_records_fts USING fts5(
+  description,
+  content='demand_records',
+  content_rowid='rowid'
+);
+
+-- 定义触发器，保持FTS索引与主表同步
+CREATE TRIGGER demand_records_ai AFTER INSERT ON demand_records BEGIN
+  INSERT INTO demand_records_fts(rowid, description) VALUES (new.rowid, new.description);
+END;
+
+CREATE TRIGGER demand_records_ad AFTER DELETE ON demand_records BEGIN
+  INSERT INTO demand_records_fts(demand_records_fts, rowid, description) VALUES('delete', old.rowid, old.description);
+END;
+
+CREATE TRIGGER demand_records_au AFTER UPDATE ON demand_records BEGIN
+  INSERT INTO demand_records_fts(demand_records_fts, rowid, description) VALUES('delete', old.rowid, old.description);
+  INSERT INTO demand_records_fts(rowid, description) VALUES (new.rowid, new.description);
+END;
 ```
 
 ## 数据转换
@@ -108,6 +132,39 @@ FROM demand_records
 ORDER BY year_month DESC;
 ```
 
+### 搜索查询
+
+#### 按需求ID搜索
+
+```sql
+SELECT id, demand_id, description, created_at 
+FROM demand_records 
+WHERE demand_id LIKE '%' || ? || '%'
+ORDER BY created_at DESC
+LIMIT ? OFFSET ?;
+```
+
+#### 按描述内容全文搜索
+
+```sql
+SELECT demand_records.id, demand_records.demand_id, demand_records.description, demand_records.created_at 
+FROM demand_records_fts 
+JOIN demand_records ON demand_records_fts.rowid = demand_records.rowid
+WHERE demand_records_fts.description MATCH ?
+ORDER BY demand_records.created_at DESC
+LIMIT ? OFFSET ?;
+```
+
+#### 获取搜索结果总数
+
+```sql
+-- 按需求ID搜索的总数
+SELECT COUNT(*) FROM demand_records WHERE demand_id LIKE '%' || ? || '%';
+
+-- 按描述全文搜索的总数
+SELECT COUNT(*) FROM demand_records_fts WHERE description MATCH ?;
+```
+
 ### 插入新记录
 
 ```sql
@@ -139,6 +196,30 @@ COMMIT;
 2. **事务处理**: 批量操作使用事务提高性能和一致性
 3. **WAL模式**: 提高并发性能，减少写操作阻塞
 4. **查询优化**: 只选择需要的字段，避免`SELECT *`
+5. **FTS5全文搜索**: 使用FTS5虚拟表实现高效的全文搜索
+6. **搜索分页**: 在搜索API中实现分页，避免返回过多结果
+7. **模糊匹配优化**: 针对LIKE查询，使用后缀索引或考虑限制通配符位置
+
+## 搜索性能优化
+
+全文搜索是资源密集型操作，SQLite中可通过以下方式优化：
+
+1. **使用合适的FTS5标记器**:
+   - 默认标记器适用于英文
+   - 中文搜索建议使用`'tokenize=porter'`或自定义标记器
+
+2. **降低I/O开销**:
+   - 确保FTS5表的读写在WAL模式下进行
+   - 考虑为频繁搜索的场景预热缓存
+
+3. **优化全文搜索语法**:
+   - 使用前缀搜索: `word*`
+   - 使用NEAR运算符: `word1 NEAR word2`
+   - 使用列限定符: `column:word`
+
+4. **搜索结果缓存**:
+   - 对于相同搜索词的查询实现结果缓存
+   - 设置适当的缓存过期策略
 
 ## 维护建议
 

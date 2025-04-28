@@ -9,7 +9,9 @@ import {
   Loader2,
   Plus,
   Save,
-  Trash2
+  Search,
+  Trash2,
+  X
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
@@ -24,9 +26,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle
 } from './ui/alert-dialog';
+import { Badge } from "./ui/badge";
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
 import { Input } from './ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { useToast } from './ui/use-toast';
 
@@ -46,6 +56,18 @@ export default function DemandRecordTable() {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [pendingAction, setPendingAction] = useState<{action: string, data?: any} | null>(null);
+  
+  // 搜索状态
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [searchType, setSearchType] = useState<'id' | 'description'>('id');
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchResults, setSearchResults] = useState<{
+    records: DemandRecord[];
+    total: number;
+    hasMore: boolean;
+  }>({ records: [], total: 0, hasMore: false });
+  const [searchOffset, setSearchOffset] = useState(0);
+  const [isSearchLoading, setIsSearchLoading] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -240,6 +262,95 @@ export default function DemandRecordTable() {
     }
   }, [currentMonth, hasChanges, loadData]);
 
+  // 处理搜索
+  const handleSearch = useCallback(async (term: string, type: 'id' | 'description', offset: number = 0) => {
+    if (!term.trim()) {
+      return;
+    }
+    
+    setIsSearchLoading(true);
+    
+    try {
+      const response = await fetch(
+        `${API_BASE_PATH}/api/search?term=${encodeURIComponent(term)}&type=${type}&offset=${offset}&limit=20`
+      );
+      const data = await response.json();
+      
+      if (data.success) {
+        if (offset === 0) {
+          // 新搜索，替换结果
+          setSearchResults({
+            records: data.data.records,
+            total: data.data.total,
+            hasMore: data.data.hasMore
+          });
+          setRecords(data.data.records);
+          setIsSearchMode(true);
+        } else {
+          // 加载更多，追加结果
+          setSearchResults(prev => ({
+            records: [...prev.records, ...data.data.records],
+            total: data.data.total,
+            hasMore: data.data.hasMore
+          }));
+          setRecords(prev => [...prev, ...data.data.records]);
+        }
+        
+        setSearchOffset(offset + data.data.records.length);
+      } else {
+        toast({
+          title: "搜索失败",
+          description: data.message || "无法执行搜索",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('搜索失败:', error);
+      toast({
+        title: "搜索错误",
+        description: "执行搜索时发生错误",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, [toast]);
+  
+  // 执行搜索
+  const executeSearch = useCallback((e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    
+    if (searchTerm.trim()) {
+      // 如果有未保存的更改，提示用户
+      if (hasChanges) {
+        setPendingAction({
+          action: 'search',
+          data: { term: searchTerm, type: searchType }
+        });
+        setConfirmDialogOpen(true);
+      } else {
+        handleSearch(searchTerm, searchType, 0);
+      }
+    }
+  }, [searchTerm, searchType, hasChanges, handleSearch]);
+  
+  // 退出搜索模式
+  const exitSearchMode = useCallback(() => {
+    setIsSearchMode(false);
+    setSearchTerm('');
+    setSearchOffset(0);
+    loadData(currentMonth);
+  }, [currentMonth, loadData]);
+  
+  // 加载更多搜索结果
+  const loadMoreResults = useCallback(() => {
+    if (searchResults.hasMore && !isSearchLoading) {
+      handleSearch(searchTerm, searchType, searchOffset);
+    }
+  }, [searchResults.hasMore, isSearchLoading, handleSearch, searchTerm, searchType, searchOffset]);
+
   // 确认执行待定操作
   const confirmPendingAction = useCallback(() => {
     if (!pendingAction) return;
@@ -247,11 +358,14 @@ export default function DemandRecordTable() {
     if (pendingAction.action === 'changeMonth' && pendingAction.data) {
       setCurrentMonth(pendingAction.data);
       loadData(pendingAction.data);
+    } else if (pendingAction.action === 'search' && pendingAction.data) {
+      const { term, type } = pendingAction.data;
+      handleSearch(term, type, 0);
     }
     
     setConfirmDialogOpen(false);
     setPendingAction(null);
-  }, [pendingAction, loadData]);
+  }, [pendingAction, loadData, handleSearch]);
 
   // CSV文件导入
   const handleImportCSV = useCallback(() => {
@@ -391,8 +505,8 @@ export default function DemandRecordTable() {
 
   return (
     <div className="space-y-4">
-      {/* 工具栏和月份选择器 */}
-      <div className="flex flex-wrap justify-between items-center gap-2 mb-4">
+      <div className="flex flex-wrap gap-4">
+        {/* 左侧工具栏 */}
         <div className="flex flex-wrap gap-2">
           <Button 
             onClick={addNewRecord}
@@ -424,15 +538,60 @@ export default function DemandRecordTable() {
             保存
           </Button>
         </div>
-
-        {/* 年月选择器 */}
-        <MonthYearPicker
-          value={currentMonth}
-          onChange={handleMonthChange}
-          availableMonths={availableMonths}
-        />
         
-        <div className="flex flex-wrap gap-2">
+        {/* 搜索区域 */}
+        <form 
+          className="flex flex-wrap items-center gap-2 ml-auto"
+          onSubmit={executeSearch}
+        >
+          <div className="relative">
+            <Input
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="搜索需求..."
+              className="pr-8 w-[200px]"
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          
+          <Select
+            value={searchType}
+            onValueChange={(value) => setSearchType(value as 'id' | 'description')}
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="搜索类型" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="id">需求ID</SelectItem>
+              <SelectItem value="description">描述内容</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Button 
+            type="submit" 
+            size="sm" 
+            variant="secondary"
+            disabled={isSearchLoading || !searchTerm.trim()}
+          >
+            {isSearchLoading ? (
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="mr-1 h-4 w-4" />
+            )}
+            搜索
+          </Button>
+        </form>
+        
+        {/* CSV导入导出按钮 */}
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
             onClick={handleImportCSV}
             size="sm"
@@ -460,7 +619,34 @@ export default function DemandRecordTable() {
           />
         </div>
       </div>
-    
+      
+      {/* 年月选择器或搜索结果状态 */}
+      <div className="flex items-center justify-between">
+        {isSearchMode ? (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="px-3 py-1 text-sm">
+              搜索结果
+            </Badge>
+            <span className="text-sm text-muted-foreground">
+              找到 {searchResults.total} 条匹配记录
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={exitSearchMode}
+            >
+              返回
+            </Button>
+          </div>
+        ) : (
+          <MonthYearPicker
+            value={currentMonth}
+            onChange={handleMonthChange}
+            availableMonths={availableMonths}
+          />
+        )}
+      </div>
+      
       {/* 表格区域 */}
       <div className="border rounded-md overflow-auto max-h-[70vh]">
         <Table>
@@ -480,91 +666,119 @@ export default function DemandRecordTable() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isLoading || isSearchLoading ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
                   <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                  <div className="mt-2 text-sm text-muted-foreground">加载中...</div>
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    {isSearchMode ? '搜索中...' : '加载中...'}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : records.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  <div className="text-muted-foreground">暂无记录</div>
-                  <Button 
-                    variant="link" 
-                    className="mt-2"
-                    onClick={addNewRecord}
-                  >
-                    添加第一条记录
-                  </Button>
+                  <div className="text-muted-foreground">
+                    {isSearchMode ? '没有找到匹配的记录' : '暂无记录'}
+                  </div>
+                  {!isSearchMode && (
+                    <Button 
+                      variant="link" 
+                      className="mt-2"
+                      onClick={addNewRecord}
+                    >
+                      添加第一条记录
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
-              records.map((record) => {
-                const isSelected = selectedRows.has(record.id);
-                return (
-                  <TableRow 
-                    key={record.id}
-                    className={cn(
-                      "group",
-                      isSelected && "bg-muted/50",
-                      "cursor-pointer",
-                      "hover:bg-muted/30"
-                    )}
-                    onClick={(e) => handleRowClick(record.id, e)}
-                  >
-                    <TableCell 
-                      className="sticky left-0 z-10 text-center p-0"
+              <>
+                {records.map((record) => {
+                  const isSelected = selectedRows.has(record.id);
+                  return (
+                    <TableRow 
+                      key={record.id}
+                      className={cn(
+                        "group",
+                        isSelected && "bg-muted/50",
+                        "cursor-pointer",
+                        "hover:bg-muted/30"
+                      )}
+                      onClick={(e) => handleRowClick(record.id, e)}
                     >
-                      <div className={cn(
-                        "w-full h-full flex items-center justify-center p-4",
-                      )}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={(checked) => 
-                            handleSelectRow(record.id, checked === true)
-                          }
-                          aria-label="选择行"
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {isSelected ? (
-                        <Input
-                          value={record.demandId}
-                          onChange={(e) => 
-                            handleRecordChange(record.id, 'demandId', e.target.value)
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="输入需求ID"
-                          className="text-center h-10"
-                        />
-                      ) : (
-                        <div className="h-10 flex items-center justify-center">{record.demandId || "-"}</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {isSelected ? (
-                        <Input
-                          value={record.description}
-                          onChange={(e) => 
-                            handleRecordChange(record.id, 'description', e.target.value)
-                          }
-                          onClick={(e) => e.stopPropagation()}
-                          placeholder="输入需求描述"
-                          className="text-center h-10"
-                        />
-                      ) : (
-                        <div className="h-10 flex items-center justify-center overflow-hidden">{record.description || "-"}</div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {format(record.createdAt, 'yyyy-MM-dd HH:mm')}
+                      <TableCell 
+                        className="sticky left-0 z-10 text-center p-0"
+                      >
+                        <div className={cn(
+                          "w-full h-full flex items-center justify-center p-4",
+                        )}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={(checked) => 
+                              handleSelectRow(record.id, checked === true)
+                            }
+                            aria-label="选择行"
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {isSelected ? (
+                          <Input
+                            value={record.demandId}
+                            onChange={(e) => 
+                              handleRecordChange(record.id, 'demandId', e.target.value)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="输入需求ID"
+                            className="text-center h-10"
+                          />
+                        ) : (
+                          <div className="h-10 flex items-center justify-center">{record.demandId || "-"}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {isSelected ? (
+                          <Input
+                            value={record.description}
+                            onChange={(e) => 
+                              handleRecordChange(record.id, 'description', e.target.value)
+                            }
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="输入需求描述"
+                            className="text-center h-10"
+                          />
+                        ) : (
+                          <div className="h-10 flex items-center justify-center overflow-hidden">{record.description || "-"}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {format(record.createdAt, 'yyyy-MM-dd HH:mm')}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                
+                {/* 加载更多按钮（仅在搜索模式且有更多结果时显示） */}
+                {isSearchMode && searchResults.hasMore && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center p-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={loadMoreResults}
+                        disabled={isSearchLoading}
+                      >
+                        {isSearchLoading ? (
+                          <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        ) : (
+                          '加载更多结果'
+                        )}
+                      </Button>
                     </TableCell>
                   </TableRow>
-                );
-              })
+                )}
+              </>
             )}
           </TableBody>
         </Table>
@@ -576,7 +790,7 @@ export default function DemandRecordTable() {
           <AlertDialogHeader>
             <AlertDialogTitle>你有未保存的更改</AlertDialogTitle>
             <AlertDialogDescription>
-              当前有未保存的更改，切换月份或导入数据将丢失这些更改。是否继续？
+              当前有未保存的更改，{pendingAction?.action === 'search' ? '执行搜索' : '切换月份或导入数据'}将丢失这些更改。是否继续？
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -125,4 +125,142 @@ export const getAvailableMonths = (): string[] => {
   `);
   
   return months.map(m => m.month);
+};
+
+// 检查是否支持FTS5全文搜索
+const isFTS5Available = (): boolean => {
+  const db = getDb();
+  try {
+    // 检查FTS5虚拟表是否存在
+    const result = queryOne<{count: number}>(`
+      SELECT count(*) as count FROM sqlite_master 
+      WHERE type='table' AND name='demand_records_fts'
+    `);
+    return result?.count === 1;
+  } catch (error) {
+    console.error('[搜索] FTS5可用性检查失败:', error);
+    return false;
+  }
+};
+
+// 搜索接口返回类型
+export interface SearchResult {
+  records: DemandRecord[];
+  total: number;
+  hasMore: boolean;
+}
+
+// 搜索需求ID
+export const searchByDemandId = (term: string, limit: number = 20, offset: number = 0): SearchResult => {
+  console.log(`[搜索] 按需求ID搜索: "${term}", limit=${limit}, offset=${offset}`);
+  
+  try {
+    // 使用LIKE模糊匹配
+    const searchTerm = `%${term}%`;
+    
+    // 查询匹配记录
+    const sql = `
+      SELECT id, demand_id, description, created_at
+      FROM demand_records
+      WHERE demand_id LIKE ?
+      ORDER BY created_at DESC
+      LIMIT ? OFFSET ?
+    `;
+    
+    const records = query<any>(sql, [searchTerm, limit, offset]);
+    
+    // 查询总匹配数
+    const totalResult = queryOne<{count: number}>(`
+      SELECT COUNT(*) as count 
+      FROM demand_records 
+      WHERE demand_id LIKE ?
+    `, [searchTerm]);
+    
+    const total = totalResult?.count || 0;
+    
+    console.log(`[搜索] 按需求ID "${term}" 找到 ${total} 条匹配记录，当前返回 ${records.length} 条`);
+    
+    return {
+      records: records.map(record => toCamelCase(record)) as DemandRecord[],
+      total,
+      hasMore: offset + records.length < total
+    };
+  } catch (error) {
+    console.error(`[搜索] 按需求ID搜索失败:`, error);
+    return { records: [], total: 0, hasMore: false };
+  }
+};
+
+// 搜索描述内容
+export const searchByDescription = (term: string, limit: number = 20, offset: number = 0): SearchResult => {
+  console.log(`[搜索] 按描述搜索: "${term}", limit=${limit}, offset=${offset}`);
+  
+  try {
+    let records: any[] = [];
+    let total = 0;
+    
+    if (isFTS5Available()) {
+      console.log(`[搜索] 使用FTS5全文搜索`);
+      
+      // 使用FTS5全文搜索
+      const ftsQuery = term.split(/\s+/).map(word => `"${word}"*`).join(' AND ');
+      
+      // 查询匹配记录
+      const sql = `
+        SELECT demand_records.id, demand_records.demand_id, demand_records.description, demand_records.created_at
+        FROM demand_records_fts
+        JOIN demand_records ON demand_records_fts.rowid = demand_records.rowid
+        WHERE demand_records_fts.description MATCH ?
+        ORDER BY demand_records.created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      records = query<any>(sql, [ftsQuery, limit, offset]);
+      
+      // 查询总匹配数
+      const totalResult = queryOne<{count: number}>(`
+        SELECT COUNT(*) as count 
+        FROM demand_records_fts 
+        WHERE description MATCH ?
+      `, [ftsQuery]);
+      
+      total = totalResult?.count || 0;
+    } else {
+      console.log(`[搜索] 使用LIKE模糊搜索`);
+      
+      // 使用LIKE模糊匹配（作为备选方案）
+      const searchTerm = `%${term}%`;
+      
+      // 查询匹配记录
+      const sql = `
+        SELECT id, demand_id, description, created_at
+        FROM demand_records
+        WHERE description LIKE ?
+        ORDER BY created_at DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      records = query<any>(sql, [searchTerm, limit, offset]);
+      
+      // 查询总匹配数
+      const totalResult = queryOne<{count: number}>(`
+        SELECT COUNT(*) as count 
+        FROM demand_records 
+        WHERE description LIKE ?
+      `, [searchTerm]);
+      
+      total = totalResult?.count || 0;
+    }
+    
+    console.log(`[搜索] 按描述内容 "${term}" 找到 ${total} 条匹配记录，当前返回 ${records.length} 条`);
+    
+    return {
+      records: records.map(record => toCamelCase(record)) as DemandRecord[],
+      total,
+      hasMore: offset + records.length < total
+    };
+  } catch (error) {
+    console.error(`[搜索] 按描述内容搜索失败:`, error);
+    return { records: [], total: 0, hasMore: false };
+  }
 }; 

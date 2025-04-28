@@ -147,6 +147,67 @@ GET /api/year-months
 }
 ```
 
+### 4. 搜索需求记录
+
+跨年月搜索需求记录，支持按需求ID或描述内容进行搜索。
+
+```
+GET /api/search?term=XXX&type=id|description&limit=20&offset=0
+```
+
+#### 请求参数
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| term | string | 是 | 搜索关键词 |
+| type | string | 是 | 搜索类型，可选值为"id"（需求ID）或"description"（描述内容） |
+| limit | number | 否 | 限制返回记录数量，默认20 |
+| offset | number | 否 | 分页偏移量，默认0 |
+
+#### 成功响应 (200 OK)
+
+```json
+{
+  "success": true,
+  "message": "搜索完成",
+  "data": {
+    "records": [
+      {
+        "id": "abc123",
+        "demandId": "DEMAND-001",
+        "description": "实现登录功能",
+        "createdAt": "2023-12-10T09:00:00.000Z"
+      },
+      // ...更多记录
+    ],
+    "total": 28,  // 总匹配记录数
+    "hasMore": true  // 是否还有更多结果
+  }
+}
+```
+
+#### 错误响应
+
+##### 请求参数错误 (400 Bad Request)
+
+```json
+{
+  "success": false,
+  "message": "搜索参数无效",
+  "error": "type参数必须为'id'或'description'"
+}
+```
+
+##### 数据库错误 (500 Internal Server Error)
+
+```json
+{
+  "success": false,
+  "message": "搜索失败",
+  "error": "错误详情"
+}
+```
+
 ## 错误处理
 
 所有API端点在遇到错误时将返回一个包含以下字段的JSON对象：
@@ -215,5 +276,25 @@ if (monthsData.success) {
   console.log('可用年月:', monthsData.yearMonths);
 } else {
   console.error('获取年月列表失败:', monthsData.message);
+}
+```
+
+### 搜索数据示例
+
+```javascript
+// 搜索包含"登录"的需求描述
+const searchResponse = await fetch('/api/search?term=登录&type=description');
+const searchData = await searchResponse.json();
+
+if (searchData.success) {
+  console.log(`找到 ${searchData.data.total} 条匹配记录，当前显示 ${searchData.data.records.length} 条`);
+  
+  // 加载更多结果（如果有）
+  if (searchData.data.hasMore) {
+    const nextPageResponse = await fetch('/api/search?term=登录&type=description&offset=20');
+    // 处理下一页结果...
+  }
+} else {
+  console.error('搜索失败:', searchData.message);
 }
 ``` 

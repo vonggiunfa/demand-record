@@ -35,7 +35,51 @@ export const getDb = (): Database.Database => {
       
       CREATE INDEX IF NOT EXISTS idx_demand_records_month 
       ON demand_records(month);
+      
+      -- 添加需求ID索引，用于加速ID搜索
+      CREATE INDEX IF NOT EXISTS idx_demand_records_demand_id
+      ON demand_records(demand_id);
+      
+      -- 检查是否支持FTS5
+      PRAGMA compile_options;
     `);
+    
+    // 检查是否启用了FTS5支持
+    const fts5Enabled = db.prepare("SELECT count(*) as count FROM pragma_compile_options WHERE compile_options LIKE 'ENABLE_FTS5'").get() as { count: number };
+    
+    if (fts5Enabled.count > 0) {
+      try {
+        // 创建全文搜索虚拟表
+        db.exec(`
+          -- 创建FTS5虚拟表用于全文搜索
+          CREATE VIRTUAL TABLE IF NOT EXISTS demand_records_fts USING fts5(
+            description,
+            content='demand_records',
+            content_rowid='rowid'
+          );
+          
+          -- 检查触发器是否存在，如果不存在则创建
+          CREATE TRIGGER IF NOT EXISTS demand_records_ai AFTER INSERT ON demand_records BEGIN
+            INSERT INTO demand_records_fts(rowid, description) VALUES (new.rowid, new.description);
+          END;
+          
+          CREATE TRIGGER IF NOT EXISTS demand_records_ad AFTER DELETE ON demand_records BEGIN
+            INSERT INTO demand_records_fts(demand_records_fts, rowid, description) VALUES('delete', old.rowid, old.description);
+          END;
+          
+          CREATE TRIGGER IF NOT EXISTS demand_records_au AFTER UPDATE ON demand_records BEGIN
+            INSERT INTO demand_records_fts(demand_records_fts, rowid, description) VALUES('delete', old.rowid, old.description);
+            INSERT INTO demand_records_fts(rowid, description) VALUES (new.rowid, new.description);
+          END;
+        `);
+        console.log('[数据库] FTS5全文搜索索引初始化完成');
+      } catch (error) {
+        console.error('[数据库] FTS5初始化失败:', error);
+        console.log('[数据库] 将使用LIKE查询代替全文搜索');
+      }
+    } else {
+      console.log('[数据库] 数据库不支持FTS5，将使用LIKE查询代替全文搜索');
+    }
     
     console.log('[数据库] 数据库连接初始化完成');
   }
