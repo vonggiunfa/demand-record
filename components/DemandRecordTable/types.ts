@@ -9,7 +9,7 @@ export interface SearchResult {
 
 // 待处理操作类型
 export interface PendingAction {
-  action: 'changeMonth' | 'search' | 'importCSV';
+  action: 'changeMonth' | 'importCSV';
   data?: any;
 }
 

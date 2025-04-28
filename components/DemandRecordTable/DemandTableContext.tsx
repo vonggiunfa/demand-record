@@ -241,36 +241,16 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     }
   }, [hasChanges, loadData]);
 
-  // 基础搜索，搜索当前月份数据
+  // 基础搜索，改为直接调用高级搜索对话框
   const executeSearch = useCallback((e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
     }
     
-    if (!searchTerm.trim()) return;
-    
-    // 如果有未保存的更改，打开确认对话框
-    if (hasChanges) {
-      setPendingAction({
-        action: 'search',
-        data: { term: searchTerm, type: searchType }
-      });
-      setConfirmDialogOpen(true);
-    } else {
-      // 搜索当前月份的数据（本地搜索）
-      const filteredRecords = records.filter(record => {
-        const value = searchType === 'id' ? record.demandId : record.description;
-        return value.toLowerCase().includes(searchTerm.toLowerCase());
-      });
-      
-      setSearchResults({
-        records: filteredRecords,
-        total: filteredRecords.length,
-        hasMore: false
-      });
-      setIsSearchMode(true);
-    }
-  }, [searchTerm, searchType, hasChanges, records]);
+    // 简化逻辑，因为不再需要主界面搜索
+    // 此方法保留用于兼容性，但不再提供实际功能
+    console.log('已移除主界面搜索，请使用高级搜索对话框');
+  }, []);
 
   // 搜索上下文，通过API搜索所有月份数据
   const handleSearch = useCallback(async (term: string, type: SearchType, offset: number = 0) => {
@@ -346,23 +326,6 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
         loadData(month);
         break;
       
-      case 'search':
-        // 执行搜索
-        const { term, type } = pendingAction.data as { term: string, type: SearchType };
-        // 本地搜索当前月份的数据
-        const filteredRecords = records.filter(record => {
-          const value = type === 'id' ? record.demandId : record.description;
-          return value.toLowerCase().includes(term.toLowerCase());
-        });
-        
-        setSearchResults({
-          records: filteredRecords,
-          total: filteredRecords.length,
-          hasMore: false
-        });
-        setIsSearchMode(true);
-        break;
-      
       case 'importCSV':
         // 导入CSV
         const importedRecords = pendingAction.data as DemandRecord[];
@@ -372,7 +335,7 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     }
     
     setPendingAction(null);
-  }, [pendingAction, loadData, records]);
+  }, [pendingAction, loadData, setCurrentMonth, setRecords, setHasChanges]);
 
   // 上下文值对象
   const contextValue: DemandTableContextType = {

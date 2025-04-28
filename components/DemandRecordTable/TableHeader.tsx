@@ -1,46 +1,36 @@
 "use client";
 
 import React from 'react';
-import MonthYearPicker from '../MonthYearPicker';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { useDemandTable } from './DemandTableContext';
 
 const TableHeader: React.FC = () => {
   const { 
-    isSearchMode,
-    searchResults,
-    exitSearchMode,
-    currentMonth,
-    handleMonthChange,
-    availableMonths
+    isSearchMode, 
+    searchTerm, 
+    searchType, 
+    exitSearchMode
   } = useDemandTable();
 
   return (
-    <div className="flex items-center justify-between">
+    <div className="py-4">
       {isSearchMode ? (
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="px-3 py-1 text-sm">
-            搜索结果
-          </Badge>
-          <span className="text-sm text-muted-foreground">
-            找到 {searchResults.total} 条匹配记录
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={exitSearchMode}
-          >
-            返回
-          </Button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <Badge variant="outline" className="mr-2 py-1 px-2">
+              搜索: {searchType === 'id' ? '需求ID' : '描述'} = {searchTerm}
+            </Badge>
+            <Button 
+              onClick={exitSearchMode}
+              size="sm"
+              variant="outline"
+            >
+              返回
+            </Button>
+          </div>
         </div>
-      ) : (
-        <MonthYearPicker
-          value={currentMonth}
-          onChange={handleMonthChange}
-          availableMonths={availableMonths}
-        />
-      )}
+      ) : null}
     </div>
   );
 };

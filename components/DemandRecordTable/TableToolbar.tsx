@@ -2,6 +2,7 @@
 
 import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import React from 'react';
+import MonthYearPicker from '../MonthYearPicker';
 import { Button } from '../ui/button';
 import CSVHandlers from './CSVHandlers';
 import { useDemandTable } from './DemandTableContext';
@@ -14,7 +15,11 @@ const TableToolbar: React.FC = () => {
     saveData, 
     selectedRows, 
     hasChanges,
-    isSaving
+    isSaving,
+    isSearchMode,
+    currentMonth,
+    handleMonthChange,
+    availableMonths
   } = useDemandTable();
 
   return (
@@ -52,11 +57,25 @@ const TableToolbar: React.FC = () => {
         </Button>
       </div>
       
-      {/* 搜索区域 */}
-      <SearchBar />
-      
-      {/* CSV导入导出按钮 */}
-      <CSVHandlers />
+      {/* 右侧工具栏 */}
+      <div className="flex flex-wrap items-center gap-2 ml-auto">
+        {/* 年月选择器 */}
+        {!isSearchMode && (
+          <div className="mr-2">
+            <MonthYearPicker
+              value={currentMonth}
+              onChange={handleMonthChange}
+              availableMonths={availableMonths}
+            />
+          </div>
+        )}
+        
+        {/* 搜索按钮 */}
+        <SearchBar />
+        
+        {/* CSV导入导出按钮 */}
+        <CSVHandlers />
+      </div>
     </div>
   );
 };
