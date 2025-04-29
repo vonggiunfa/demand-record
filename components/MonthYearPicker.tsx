@@ -2,9 +2,9 @@
 
 import { Button } from "@/components/ui/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger
+    Popover,
+    PopoverContent,
+    PopoverTrigger
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 interface MonthYearPickerProps {
   value: string; // 格式: "YYYY-MM"
   onChange: (value: string) => void;
-  availableMonths?: string[]; // 可选的可用月份列表
+  availableMonths?: string[]; // 可用月份列表（传入但不再限制选择，仅用于UI提示）
   className?: string;
 }
 
@@ -45,9 +45,9 @@ export default function MonthYearPicker({
     setCurrentYear(prev => prev + 1);
   };
 
-  // 判断月份是否可用
-  const isMonthAvailable = (year: number, month: number): boolean => {
-    if (!availableMonths || availableMonths.length === 0) return true;
+  // 判断月份是否有数据（不再限制选择，仅用于UI提示）
+  const hasMonthData = (year: number, month: number): boolean => {
+    if (!availableMonths || availableMonths.length === 0) return false;
     
     const yearMonth = `${year}-${String(month).padStart(2, '0')}`;
     return availableMonths.includes(yearMonth);
@@ -103,7 +103,7 @@ export default function MonthYearPicker({
             {/* 月份网格 */}
             <div className="grid grid-cols-3 gap-2">
               {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => {
-                const isAvailable = isMonthAvailable(currentYear, month);
+                const hasData = hasMonthData(currentYear, month);
                 const isSelected = month === currentMonth && value.split('-')[0] === currentYear.toString();
                 
                 return (
@@ -113,10 +113,9 @@ export default function MonthYearPicker({
                     variant={isSelected ? "default" : "outline"}
                     className={cn(
                       "h-9",
-                      !isAvailable && "opacity-50 cursor-not-allowed",
-                      isAvailable && !isSelected && "hover:bg-muted",
+                      isSelected ? "" : hasData ? "bg-green-50/40" : "",
+                      "hover:bg-opacity-50"
                     )}
-                    disabled={!isAvailable}
                   >
                     {monthNames[month - 1]}
                   </Button>
