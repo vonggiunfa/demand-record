@@ -1,11 +1,12 @@
 "use client";
 
-import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Database, Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import React from 'react';
 import MonthYearPicker from '../MonthYearPicker';
 import { Button } from '../ui/button';
 import CSVHandlers from './CSVHandlers';
 import { useDemandTable } from './DemandTableContext';
+import { importHistoricalData } from './HistoricalDataImport';
 import SearchBar from './SearchBar';
 
 const TableToolbar: React.FC = () => {
@@ -19,7 +20,8 @@ const TableToolbar: React.FC = () => {
     isSearchMode,
     currentMonth,
     handleMonthChange,
-    availableMonths
+    availableMonths,
+    toast
   } = useDemandTable();
 
   return (
@@ -55,6 +57,14 @@ const TableToolbar: React.FC = () => {
           )}
           保存
         </Button>
+        {/* <Button
+          onClick={() => importHistoricalData(toast)}
+          size="sm"
+          variant="outline"
+        >
+          <Database className="mr-1 h-4 w-4" />
+          导入历史数据
+        </Button> */}
       </div>
       
       {/* 右侧工具栏 */}
