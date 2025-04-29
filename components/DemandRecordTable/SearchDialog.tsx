@@ -133,7 +133,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="id">需求ID</SelectItem>
-                <SelectItem value="description">描述内容</SelectItem>
+                <SelectItem value="description">需求描述</SelectItem>
               </SelectContent>
             </Select>
             
@@ -164,7 +164,7 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[150px] sticky-header">需求ID</TableHead>
-                  <TableHead className="sticky-header">描述内容</TableHead>
+                  <TableHead className="sticky-header">需求描述</TableHead>
                   <TableHead className="w-[150px] sticky-header">所属月份</TableHead>
                   <TableHead className="w-[180px] sticky-header">创建时间</TableHead>
                 </TableRow>
