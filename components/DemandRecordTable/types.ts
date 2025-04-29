@@ -6,7 +6,7 @@ export interface ToastProps {
   title?: string;
   description?: string;
   action?: ToastActionElement;
-  variant?: 'default' | 'destructive';
+  variant?: 'default' | 'destructive' | 'success' | 'warning';
 }
 
 // 搜索结果类型

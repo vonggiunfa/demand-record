@@ -118,7 +118,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
           title: "保存成功",
           description: records.length === 0 
             ? `已清空 ${currentMonth} 的所有记录` 
-            : responseData.message || `成功保存 ${records.length} 条记录`
+            : responseData.message || `成功保存 ${records.length} 条记录`,
+          variant: "success"
         });
         setHasChanges(false);
         loadAvailableMonths(); // 刷新可用月份列表
@@ -161,7 +162,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     // 添加toast提示
     toast({
       title: "添加成功",
-      description: "已添加新记录，请填写内容后保存"
+      description: "已添加新记录，请填写内容后保存",
+      variant: "success"
     });
   }, [toast]);
 
@@ -178,7 +180,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     
     toast({
       title: "删除成功",
-      description: `已删除 ${deletedCount} 条记录`
+      description: `已删除 ${deletedCount} 条记录`,
+      variant: "success"
     });
   }, [selectedRows, toast]);
 
@@ -350,7 +353,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
         // 添加导入成功的toast提示
         toast({
           title: "导入成功",
-          description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`
+          description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`,
+          variant: "success"
         });
         break;
     }

@@ -79,7 +79,8 @@ const CSVHandlers: React.FC = () => {
             // 添加导入成功的toast提示
             toast({
               title: "导入成功",
-              description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`
+              description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`,
+              variant: "success"
             });
           }
         } else {
@@ -87,7 +88,7 @@ const CSVHandlers: React.FC = () => {
           toast({
             title: "导入提示",
             description: "CSV文件中没有有效的记录数据",
-            variant: "default"
+            variant: "warning"
           });
         }
       } catch (error) {
@@ -144,7 +145,8 @@ const CSVHandlers: React.FC = () => {
     // 添加导出成功的toast提示
     toast({
       title: "导出成功",
-      description: `已导出 ${recordsToExport.length} 条记录到CSV文件`
+      description: `已导出 ${recordsToExport.length} 条记录到CSV文件`,
+      variant: "success"
     });
     
     // 释放URL对象

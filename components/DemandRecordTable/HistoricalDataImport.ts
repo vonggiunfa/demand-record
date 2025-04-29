@@ -225,7 +225,8 @@ export const importHistoricalData = async (toast: (props: ToastProps) => void) =
     // 显示开始导入提示
     toast({
       title: "开始导入",
-      description: "正在清洗和准备历史数据..."
+      description: "正在清洗和准备历史数据...",
+      variant: "default"
     });
     
     // 清洗数据
@@ -245,7 +246,8 @@ export const importHistoricalData = async (toast: (props: ToastProps) => void) =
     for (const month of allMonths) {
       toast({
         title: "导入进行中",
-        description: `正在导入 ${month} 的数据...`
+        description: `正在导入 ${month} 的数据...`,
+        variant: "default"
       });
       
       const success = await importMonthData(month, monthlyData[month]);
@@ -264,13 +266,14 @@ export const importHistoricalData = async (toast: (props: ToastProps) => void) =
     if (failed.length === 0) {
       toast({
         title: "导入完成",
-        description: `成功导入 ${successful.length} 个月份的历史数据`
+        description: `成功导入 ${successful.length} 个月份的历史数据`,
+        variant: "success"
       });
     } else {
       toast({
         title: "部分导入成功",
         description: `成功: ${successful.length} 个月份, 失败: ${failed.length} 个月份`,
-        variant: "destructive"
+        variant: "warning"
       });
     }
     
