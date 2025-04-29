@@ -94,7 +94,6 @@ const TableComponent: React.FC = () => {
                     <TableCell 
                       className={cn(
                         "sticky-left-cell text-center p-0",
-                        isSelected && "bg-muted/50"
                       )}
                     >
                       <div className={cn(
