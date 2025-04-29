@@ -2,14 +2,14 @@
 
 import React from 'react';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle
 } from '../ui/alert-dialog';
 import { useDemandTable } from './DemandTableContext';
 
@@ -27,8 +27,6 @@ const ConfirmDialog: React.FC = () => {
     switch (pendingAction.action) {
       case 'changeMonth':
         return '切换月份';
-      case 'search':
-        return '执行搜索';
       case 'importCSV':
         return '导入数据';
       default:
