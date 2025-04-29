@@ -8,15 +8,15 @@ import {
     ToastTitle,
     ToastViewport,
 } from "@/components/ui/toast"
-import { useToast } from "@/components/ui/use-toast"
+import { TOAST_REMOVE_DELAY, useToast } from "@/components/ui/use-toast"
 import { AlertCircle, AlertTriangle, CheckCircle2, Info } from "lucide-react"
 
 export function Toaster() {
   const { toasts } = useToast()
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, variant, ...props }) {
+    <ToastProvider duration={TOAST_REMOVE_DELAY}>
+      {toasts.map(function ({ id, title, description, action, variant, duration, ...props }) {
         // 根据 variant 类型选择对应的图标
         const IconComponent = {
           default: Info,
@@ -34,7 +34,12 @@ export function Toaster() {
         }[variant || 'default']
 
         return (
-          <Toast key={id} {...props} variant={variant}>
+          <Toast 
+            key={id} 
+            {...props} 
+            variant={variant}
+            duration={duration}
+          >
             <div className="flex items-start gap-3">
               {IconComponent && (
                 <IconComponent className={`h-5 w-5 flex-shrink-0 ${iconColorClass}`} />
