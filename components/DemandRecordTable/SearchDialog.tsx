@@ -6,9 +6,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/button';
 import {
   Dialog,
-  DialogClose,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle
 } from '../ui/dialog';
@@ -97,14 +95,14 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+        <DialogHeader className="pb-2">
           <DialogTitle className="text-center">搜索</DialogTitle>
         </DialogHeader>
 
-        <div className="flex flex-col space-y-4 overflow-auto px-2">
+        <div className="flex flex-col space-y-4 overflow-auto flex-1 px-2">
           {/* 搜索表单 */}
           <form 
-            className="flex items-center gap-2 sticky top-0 bg-background py-2 z-10"
+            className="flex items-center gap-2 sticky top-0 bg-background py-2 z-20"
             onSubmit={executeSearch}
           >
             <div className="relative flex-1">
@@ -161,14 +159,14 @@ const SearchDialog: React.FC<SearchDialogProps> = ({ open, onOpenChange }) => {
           )}
 
           {/* 搜索结果表格 */}
-          <div className="border rounded-md overflow-auto flex-1">
+          <div className="dialog-table-container custom-scrollbar flex-1">
             <Table>
-              <TableHeader className="sticky top-0 z-10">
+              <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[150px]">需求ID</TableHead>
-                  <TableHead>描述内容</TableHead>
-                  <TableHead className="w-[150px]">所属月份</TableHead>
-                  <TableHead className="w-[180px]">创建时间</TableHead>
+                  <TableHead className="w-[150px] sticky-header">需求ID</TableHead>
+                  <TableHead className="sticky-header">描述内容</TableHead>
+                  <TableHead className="w-[150px] sticky-header">所属月份</TableHead>
+                  <TableHead className="w-[180px] sticky-header">创建时间</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

@@ -50,7 +50,7 @@ export const getDemandsByMonth = (month: string): DemandRecord[] => {
     const sql = `
       SELECT id, demand_id, description, created_at
       FROM demand_records
-      WHERE month = ?
+      WHERE year_month = ?
       ORDER BY created_at DESC
     `;
     console.log(`执行SQL查询: ${sql.trim().replace(/\s+/g, ' ')}, 参数: [${month}]`);
@@ -84,12 +84,12 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
       try {
         // 清除当前月份的记录
         console.log(`[调试] 清除月份 "${month}" 的现有记录`);
-        const deleteResult = execute('DELETE FROM demand_records WHERE month = ?', [month]);
+        const deleteResult = execute('DELETE FROM demand_records WHERE year_month = ?', [month]);
         console.log(`[调试] 删除了 ${deleteResult} 条现有记录`);
         
         // 准备批量插入的语句
         const insertStmt = getDb().prepare(`
-          INSERT INTO demand_records (id, demand_id, description, created_at, month)
+          INSERT INTO demand_records (id, demand_id, description, created_at, year_month)
           VALUES (?, ?, ?, ?, ?)
         `);
         
@@ -117,7 +117,7 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
         console.log(`[调试] 成功插入 ${insertedCount} 条记录到月份 "${month}"`);
         
         // 验证插入后的记录数
-        const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE month = ?', [month]);
+        const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE year_month = ?', [month]);
         console.log(`[调试] 月份 "${month}" 现有记录数: ${recordCount?.count || 0}`);
         
         // 如果是空记录列表，则只需确认数据库中没有记录即可
@@ -150,12 +150,12 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
 
 // 获取所有可用的月份
 export const getAvailableMonths = (): string[] => {
-  const months = query<{ month: string }>(`
-    SELECT DISTINCT month FROM demand_records
-    ORDER BY month DESC
+  const months = query<{ year_month: string }>(`
+    SELECT DISTINCT year_month FROM demand_records
+    ORDER BY year_month DESC
   `);
   
-  return months.map(m => m.month);
+  return months.map(m => m.year_month);
 };
 
 // 检查是否支持FTS5全文搜索
@@ -233,8 +233,8 @@ export const searchByDescription = (term: string, limit: number = 20, offset: nu
     if (isFTS5Available()) {
       console.log(`[搜索] 使用FTS5全文搜索`);
       
-      // 使用FTS5全文搜索
-      const ftsQuery = term.split(/\s+/).map(word => `"${word}"*`).join(' AND ');
+      // 使用简单的搜索词，不添加额外语法（适合中文搜索）
+      const ftsQuery = term;
       
       // 查询匹配记录
       const sql = `
@@ -248,14 +248,40 @@ export const searchByDescription = (term: string, limit: number = 20, offset: nu
       
       records = query<any>(sql, [ftsQuery, limit, offset]);
       
-      // 查询总匹配数
-      const totalResult = queryOne<{count: number}>(`
-        SELECT COUNT(*) as count 
-        FROM demand_records_fts 
-        WHERE description MATCH ?
-      `, [ftsQuery]);
-      
-      total = totalResult?.count || 0;
+      // 如果FTS查询没有结果，尝试使用LIKE查询
+      if (records.length === 0) {
+        console.log(`[搜索] FTS查询没有结果，尝试使用LIKE查询`);
+        
+        const searchTerm = `%${term}%`;
+        
+        const likeSql = `
+          SELECT id, demand_id, description, created_at
+          FROM demand_records
+          WHERE description LIKE ?
+          ORDER BY created_at DESC
+          LIMIT ? OFFSET ?
+        `;
+        
+        records = query<any>(likeSql, [searchTerm, limit, offset]);
+        
+        // 查询总匹配数
+        const totalResult = queryOne<{count: number}>(`
+          SELECT COUNT(*) as count 
+          FROM demand_records 
+          WHERE description LIKE ?
+        `, [searchTerm]);
+        
+        total = totalResult?.count || 0;
+      } else {
+        // 查询总匹配数
+        const totalResult = queryOne<{count: number}>(`
+          SELECT COUNT(*) as count 
+          FROM demand_records_fts 
+          WHERE description MATCH ?
+        `, [ftsQuery]);
+        
+        total = totalResult?.count || 0;
+      }
     } else {
       console.log(`[搜索] 使用LIKE模糊搜索`);
       

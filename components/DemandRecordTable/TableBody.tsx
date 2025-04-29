@@ -32,11 +32,11 @@ const TableComponent: React.FC = () => {
   }, [records, selectedRows]);
 
   return (
-    <div className="border rounded-md overflow-auto max-h-[70vh]">
+    <div className="table-container custom-scrollbar">
       <Table>
-        <TableHeader className="sticky top-0 z-10">
+        <TableHeader>
           <TableRow>
-            <TableHead className="w-[50px] sticky left-0 z-20 text-center bg-background">
+            <TableHead className="w-[50px] text-center sticky-corner">
               <Checkbox
                 checked={isAllSelected}
                 onCheckedChange={handleSelectAll}
@@ -44,9 +44,9 @@ const TableComponent: React.FC = () => {
                 aria-label="全选"
               />
             </TableHead>
-            <TableHead className="w-[200px] text-center">需求ID</TableHead>
-            <TableHead className="text-center">需求描述</TableHead>
-            <TableHead className="w-[180px] text-center">创建时间</TableHead>
+            <TableHead className="w-[200px] text-center sticky-header">需求ID</TableHead>
+            <TableHead className="text-center sticky-header">需求描述</TableHead>
+            <TableHead className="w-[180px] text-center sticky-header">创建时间</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -92,7 +92,10 @@ const TableComponent: React.FC = () => {
                     onClick={(e) => handleRowClick(record.id, e)}
                   >
                     <TableCell 
-                      className="sticky left-0 z-10 text-center p-0"
+                      className={cn(
+                        "sticky-left-cell text-center p-0",
+                        isSelected && "bg-muted/50"
+                      )}
                     >
                       <div className={cn(
                         "w-full h-full flex items-center justify-center p-4",

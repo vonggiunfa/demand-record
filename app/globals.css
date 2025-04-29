@@ -142,3 +142,75 @@
 .custom-scrollbar::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* 表格sticky头部样式 */
+.sticky-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 10 !important;
+  background-color: hsl(var(--background)) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 增加一个细微的亮色边缘，提升视觉效果 */
+.sticky-header::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    rgba(0, 0, 0, 0.01), 
+    rgba(0, 0, 0, 0.03) 25%, 
+    rgba(0, 0, 0, 0.03) 75%, 
+    rgba(0, 0, 0, 0.01)
+  );
+}
+
+.sticky-left-cell {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 9 !important;
+  background-color: hsl(var(--background)) !important;
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* 特殊角落单元格，同时固定顶部和左侧 */
+.sticky-corner {
+  position: sticky !important;
+  top: 0 !important;
+  left: 0 !important;
+  z-index: 11 !important;
+  background-color: hsl(var(--background)) !important;
+  box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* 确保在暗色模式下也有正确的背景色 */
+.dark .sticky-header,
+.dark .sticky-left-cell,
+.dark .sticky-corner {
+  background-color: hsl(var(--background)) !important;
+}
+
+/* 表格容器特定样式 */
+.table-container {
+  contain: paint;  /* 提高渲染性能 */
+  isolation: isolate; /* 创建新的堆叠上下文 */
+  position: relative;
+  max-height: 70vh;
+  overflow: auto;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+}
+
+/* 在弹窗中使用的表格容器样式 */
+.dialog-table-container {
+  contain: paint;
+  isolation: isolate;
+  position: relative;
+  max-height: calc(80vh - 120px); /* 为弹窗头部和底部留出空间 */
+  overflow: auto;
+  border-radius: var(--radius);
+  border: 1px solid hsl(var(--border));
+}

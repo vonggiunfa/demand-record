@@ -6,7 +6,10 @@
     "dev": "next dev -p 3003",
     "build": "next build",
     "start": "next start -p 3003",
-    "lint": "next lint"
+    "lint": "next lint",
+    "migrate-db": "node data/scripts/migrate-month-to-year-month.js",
+    "repair-fts": "node data/scripts/repair-fts-index.js",
+    "fix-chinese-fts": "node data/scripts/fix-chinese-fts.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

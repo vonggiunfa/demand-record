@@ -104,11 +104,11 @@ export const getDb = (): Database.Database => {
             demand_id TEXT,
             description TEXT,
             created_at TEXT NOT NULL,
-            month TEXT NOT NULL
+            year_month TEXT NOT NULL
           );
           
-          CREATE INDEX IF NOT EXISTS idx_demand_records_month 
-          ON demand_records(month);
+          CREATE INDEX IF NOT EXISTS idx_demand_records_year_month 
+          ON demand_records(year_month);
           
           -- 添加需求ID索引，用于加速ID搜索
           CREATE INDEX IF NOT EXISTS idx_demand_records_demand_id

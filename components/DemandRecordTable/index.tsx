@@ -17,7 +17,7 @@ const DemandTableContent: React.FC = () => {
   }, [currentMonth, loadData, loadAvailableMonths]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
       <TableToolbar />
       <TableComponent />
       <ConfirmDialog />
