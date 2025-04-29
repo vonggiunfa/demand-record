@@ -120,6 +120,17 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
         const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE month = ?', [month]);
         console.log(`[调试] 月份 "${month}" 现有记录数: ${recordCount?.count || 0}`);
         
+        // 如果是空记录列表，则只需确认数据库中没有记录即可
+        if (demands.length === 0) {
+          if (recordCount && recordCount.count === 0) {
+            return true;
+          } else {
+            console.error(`[错误] 清空记录失败: 期望 0 条记录, 实际 ${recordCount?.count || 0}`);
+            throw new Error('清空记录后数据库仍有残留记录');
+          }
+        }
+        
+        // 非空记录列表的验证逻辑不变
         if (recordCount && recordCount.count === demands.length) {
           return true;
         } else {

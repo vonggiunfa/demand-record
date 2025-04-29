@@ -5,11 +5,11 @@ import React, { createContext, ReactNode, useCallback, useContext, useState } fr
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '../ui/use-toast';
 import {
-  API_BASE_PATH,
-  DemandTableContextType,
-  PendingAction,
-  SearchResult,
-  SearchType
+    API_BASE_PATH,
+    DemandTableContextType,
+    PendingAction,
+    SearchResult,
+    SearchType
 } from './types';
 
 // 创建上下文
@@ -116,7 +116,9 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
       if (responseData.success) {
         toast({
           title: "保存成功",
-          description: responseData.message || `成功保存 ${records.length} 条记录`
+          description: records.length === 0 
+            ? `已清空 ${currentMonth} 的所有记录` 
+            : responseData.message || `成功保存 ${records.length} 条记录`
         });
         setHasChanges(false);
         loadAvailableMonths(); // 刷新可用月份列表

@@ -54,12 +54,25 @@ export async function POST(request: NextRequest) {
     
     // 空记录检查
     if (records.length === 0) {
-      console.warn('[API] 尝试保存空记录列表');
-      return NextResponse.json({
-        success: true,
-        message: "没有记录需要保存",
-        recordCount: 0
-      });
+      console.warn('[API] 尝试保存空记录列表，将清空当月记录');
+      // 调用服务层函数处理空记录保存（实现清空功能）
+      const success = saveDemands([], yearMonth);
+      
+      if (success) {
+        console.log(`[API] 成功清空月份 ${yearMonth} 的记录`);
+        return NextResponse.json({
+          success: true,
+          message: `已清空 ${yearMonth} 的所有记录`,
+          recordCount: 0
+        });
+      } else {
+        console.error('[API] 清空记录失败');
+        return NextResponse.json({
+          success: false,
+          message: "清空记录失败",
+          error: "数据库操作失败"
+        }, { status: 500 });
+      }
     }
     
     console.log(`[API] 验证通过，准备保存 ${records.length} 条记录到月份 ${yearMonth}`);

@@ -95,6 +95,18 @@ POST /api/save-data
 }
 ```
 
+#### 空记录保存/清空月份 (200 OK)
+
+当提交的记录列表为空时，API会清空该月份所有记录：
+
+```json
+{
+  "success": true,
+  "message": "已清空 2023-12 的所有记录",
+  "recordCount": 0
+}
+```
+
 #### 错误响应
 
 ##### 请求格式错误 (400 Bad Request)
