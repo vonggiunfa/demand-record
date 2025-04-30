@@ -1,4 +1,4 @@
-import { saveDemands } from '@/lib/demandService';
+import { checkDuplicateDemandIds, saveDemands } from '@/lib/demandService';
 import { DemandRecord } from '@/types/demand';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
@@ -14,7 +14,8 @@ const SaveRequestSchema = z.object({
       description: z.string().optional(),
       createdAt: z.string().transform(val => new Date(val))
     }))
-  })
+  }),
+  onlySelected: z.boolean().optional().default(false)
 });
 
 /**
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
     // 解析请求体
     const requestData = await request.json();
     
-    console.log(`[API] 收到保存数据请求，年月: ${requestData?.yearMonth}, 记录数: ${requestData?.data?.records?.length || 0}`);
+    console.log(`[API] 收到保存数据请求，年月: ${requestData?.yearMonth}, 记录数: ${requestData?.data?.records?.length || 0}, 仅保存选中: ${requestData?.onlySelected}`);
     
     // 检查请求数据基本结构
     if (!requestData || !requestData.yearMonth || !requestData.data || !requestData.data.records) {
@@ -49,14 +50,14 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    const { yearMonth, data } = validationResult.data;
+    const { yearMonth, data, onlySelected } = validationResult.data;
     const records = data.records as DemandRecord[];
     
     // 空记录检查
     if (records.length === 0) {
       console.warn('[API] 尝试保存空记录列表，将清空当月记录');
       // 调用服务层函数处理空记录保存（实现清空功能）
-      const success = saveDemands([], yearMonth);
+      const success = saveDemands([], yearMonth, false);
       
       if (success) {
         console.log(`[API] 成功清空月份 ${yearMonth} 的记录`);
@@ -77,8 +78,21 @@ export async function POST(request: NextRequest) {
     
     console.log(`[API] 验证通过，准备保存 ${records.length} 条记录到月份 ${yearMonth}`);
     
+    // 如果是选中保存模式，检查需求ID是否重复
+    if (onlySelected) {
+      const duplicateRecords = checkDuplicateDemandIds(records, yearMonth);
+      if (duplicateRecords.length > 0) {
+        console.log(`[API] 检测到 ${duplicateRecords.length} 条重复的需求ID`);
+        return NextResponse.json({
+          success: false,
+          message: "部分需求ID已存在，无法保存",
+          duplicateRecords // 返回的是 { demandId: string, description: string }[] 类型
+        }, { status: 200 });
+      }
+    }
+    
     // 保存数据
-    const success = saveDemands(records, yearMonth);
+    const success = saveDemands(records, yearMonth, onlySelected);
     
     if (success) {
       console.log(`[API] 成功保存 ${records.length} 条记录`);

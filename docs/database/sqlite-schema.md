@@ -124,6 +124,20 @@ WHERE year_month = '2023-12'
 ORDER BY created_at DESC;
 ```
 
+### 检查需求ID是否已存在
+
+```sql
+-- 检查单个需求ID是否存在
+SELECT COUNT(*) > 0 as exists_flag 
+FROM demand_records 
+WHERE demand_id = ?;
+
+-- 批量检查多个需求ID是否存在
+SELECT demand_id 
+FROM demand_records 
+WHERE demand_id IN (?, ?, ?); -- 参数列表动态生成
+```
+
 ### 获取所有可用年月
 
 ```sql

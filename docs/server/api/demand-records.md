@@ -100,7 +100,7 @@ GET /api/all-demands
 
 ### 3. 保存需求记录
 
-保存指定年月的需求记录数据。
+保存指定年月的需求记录数据，支持查重校验。只保存用户勾选的需求记录，系统会自动校验需求ID是否已存在。
 
 ```
 POST /api/save-data
@@ -122,7 +122,8 @@ POST /api/save-data
       },
       // ...更多记录
     ]
-  }
+  },
+  "onlySelected": true // 标识只保存选中的记录
 }
 ```
 
@@ -136,9 +137,24 @@ POST /api/save-data
 }
 ```
 
+#### 重复记录响应 (200 OK, 但有重复记录信息)
+
+```json
+{
+  "success": false,
+  "message": "部分需求ID已存在，无法保存",
+  "duplicateRecords": [
+    {
+      "demandId": "DEMAND-001",
+      "description": "实现登录功能"
+    }
+  ]
+}
+```
+
 #### 空记录保存/清空月份 (200 OK)
 
-当提交的记录列表为空时，API会清空该月份所有记录：
+当提交的记录列表为空且`onlySelected`为`false`时，API会清空该月份所有记录：
 
 ```json
 {
@@ -324,12 +340,26 @@ const saveResponse = await fetch('/api/save-data', {
     data: { 
       lastUpdated: new Date().toISOString(),
       records: [/* 记录数组 */] 
-    }
+    },
+    onlySelected: true
   })
 });
 
 const saveResult = await saveResponse.json();
-console.log(saveResult.message);
+
+if (saveResult.success) {
+  console.log(saveResult.message);
+} else {
+  // 处理错误情况
+  if (saveResult.duplicateRecords) {
+    console.error('保存失败：以下需求ID已存在：');
+    saveResult.duplicateRecords.forEach(record => {
+      console.error(`需求ID: ${record.demandId} - ${record.description}`);
+    });
+  } else {
+    console.error('保存失败:', saveResult.message);
+  }
+}
 ```
 
 ### 获取年月列表示例
@@ -364,4 +394,3 @@ if (searchData.success) {
 } else {
   console.error('搜索失败:', searchData.message);
 }
-```

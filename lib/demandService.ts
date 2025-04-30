@@ -70,9 +70,64 @@ export const getDemandsByMonth = (month: string): DemandRecord[] => {
   }
 };
 
+// 检查需求ID是否重复
+export const checkDuplicateDemandIds = (demands: DemandRecord[], month: string): { demandId: string, description: string }[] => {
+  console.log(`[调试] 检查 ${demands.length} 条记录的需求ID是否在月份 "${month}" 中重复`);
+  
+  if (!demands.length || !month) {
+    return [];
+  }
+  
+  try {
+    // 准备需要检查的需求ID列表
+    const demandIds = demands.map(d => d.demandId).filter(id => id);
+    
+    if (demandIds.length === 0) {
+      console.log('[调试] 没有需要检查的有效需求ID');
+      return [];
+    }
+    
+    console.log(`[调试] 需要检查 ${demandIds.length} 个需求ID`);
+    
+    // 构建IN查询的参数占位符
+    const placeholders = demandIds.map(() => '?').join(',');
+    
+    // 查询数据库中已存在的需求ID（仅当前月份）
+    const sql = `
+      SELECT demand_id, description
+      FROM demand_records
+      WHERE demand_id IN (${placeholders})
+      AND year_month = ?
+    `;
+    
+    // 添加月份作为查询条件
+    const params = [...demandIds, month];
+    
+    const existingRecords = query<{demand_id: string, description: string}>(sql, params);
+    console.log(`[调试] 在月份 "${month}" 中找到 ${existingRecords.length} 个已存在的需求ID`);
+    
+    // 将已存在的需求ID转换为Set，便于快速查找
+    const existingDemandIdSet = new Set(existingRecords.map(r => r.demand_id));
+    
+    // 找出重复的记录
+    const duplicateRecords = demands.filter(d => d.demandId && existingDemandIdSet.has(d.demandId))
+      .map(record => ({
+        demandId: record.demandId || '',
+        description: record.description || ''
+      }));
+    
+    console.log(`[调试] 找到 ${duplicateRecords.length} 条重复记录`);
+    
+    return duplicateRecords;
+  } catch (error) {
+    console.error('[错误] 检查需求ID重复失败:', error);
+    return [];
+  }
+};
+
 // 保存需求记录（批量保存，使用事务）
-export const saveDemands = (demands: DemandRecord[], month: string): boolean => {
-  console.log(`[调试] 开始保存 ${demands.length} 条记录到月份 "${month}"`);
+export const saveDemands = (demands: DemandRecord[], month: string, onlySelected: boolean = false): boolean => {
+  console.log(`[调试] 开始${onlySelected ? '增量' : '全量'}保存 ${demands.length} 条记录到月份 "${month}"`);
   
   if (!month || !/^\d{4}-\d{2}$/.test(month)) {
     console.error(`[错误] 无效的月份格式: "${month}"`);
@@ -82,10 +137,41 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
   try {
     return transaction(() => {
       try {
-        // 清除当前月份的记录
-        console.log(`[调试] 清除月份 "${month}" 的现有记录`);
-        const deleteResult = execute('DELETE FROM demand_records WHERE year_month = ?', [month]);
-        console.log(`[调试] 删除了 ${deleteResult} 条现有记录`);
+        if (!onlySelected) {
+          // 全量保存模式：清除当前月份的记录
+          console.log(`[调试] 清除月份 "${month}" 的现有记录`);
+          const deleteResult = execute('DELETE FROM demand_records WHERE year_month = ?', [month]);
+          console.log(`[调试] 删除了 ${deleteResult} 条现有记录`);
+        } else if (demands.length > 0) {
+          // 增量保存模式：先检查记录ID是否已存在，若存在则先删除这些记录
+          // 记录用户选中修改的记录ID
+          const ids = demands.map(d => d.id);
+          
+          if (ids.length > 0) {
+            const placeholders = ids.map(() => '?').join(',');
+            
+            // 1. 先查询这些ID是否已存在于数据库中
+            const existingIds = query<{id: string}>(`
+              SELECT id FROM demand_records 
+              WHERE id IN (${placeholders})
+            `, ids);
+            
+            if (existingIds.length > 0) {
+              console.warn(`[调试] 发现 ${existingIds.length} 条记录ID已存在，将先删除这些记录`);
+              
+              // 2. 删除已存在的记录（按ID删除）
+              const deleteIds = existingIds.map(record => record.id);
+              const deletePlaceholders = deleteIds.map(() => '?').join(',');
+              
+              const deleteResult = execute(`
+                DELETE FROM demand_records 
+                WHERE id IN (${deletePlaceholders})
+              `, deleteIds);
+              
+              console.log(`[调试] 已删除 ${deleteResult} 条已存在的记录`);
+            }
+          }
+        }
         
         // 准备批量插入的语句
         const insertStmt = getDb().prepare(`
@@ -96,17 +182,19 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
         // 执行批量插入
         let insertedCount = 0;
         for (const demand of demands) {
-          // 将驼峰命名的字段转换为蛇形命名
-          const record = toSnakeCase(demand) as any;
-          
-          insertStmt.run(
-            demand.id,
-            demand.demandId || '',
-            demand.description || '',
-            demand.createdAt instanceof Date ? demand.createdAt.toISOString() : new Date().toISOString(),
-            month
-          );
-          insertedCount++;
+          try {
+            insertStmt.run(
+              demand.id,
+              demand.demandId || '',
+              demand.description || '',
+              demand.createdAt instanceof Date ? demand.createdAt.toISOString() : new Date().toISOString(),
+              month
+            );
+            insertedCount++;
+          } catch (error) {
+            console.error(`[错误] 插入记录失败:`, error);
+            throw error; // 重新抛出错误，确保事务回滚
+          }
           
           // 每100条记录输出一次日志
           if (insertedCount % 100 === 0) {
@@ -116,7 +204,13 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
         
         console.log(`[调试] 成功插入 ${insertedCount} 条记录到月份 "${month}"`);
         
-        // 验证插入后的记录数
+        // 增量保存模式，不需要验证总记录数
+        if (onlySelected) {
+          return true;
+        }
+        
+        // 只有全量保存模式才需要验证记录数
+        // 验证插入后的记录数（全量保存模式）
         const recordCount = queryOne<{count: number}>('SELECT COUNT(*) as count FROM demand_records WHERE year_month = ?', [month]);
         console.log(`[调试] 月份 "${month}" 现有记录数: ${recordCount?.count || 0}`);
         
@@ -130,7 +224,7 @@ export const saveDemands = (demands: DemandRecord[], month: string): boolean => 
           }
         }
         
-        // 非空记录列表的验证逻辑不变
+        // 非空记录列表的验证逻辑
         if (recordCount && recordCount.count === demands.length) {
           return true;
         } else {

@@ -95,12 +95,16 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     setIsSaving(true);
     
     try {
+      // 只获取选中的记录
+      const selectedRecords = records.filter(record => selectedRows.has(record.id));
+      
       const payload = {
         yearMonth: currentMonth,
         data: {
           lastUpdated: new Date().toISOString(),
-          records
-        }
+          records: selectedRows.size > 0 ? selectedRecords : records
+        },
+        onlySelected: selectedRows.size > 0
       };
       
       const response = await fetch(`${API_BASE_PATH}/api/save-data`, {
@@ -116,20 +120,33 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
       if (responseData.success) {
         toast({
           title: "保存成功",
-          description: records.length === 0 
+          description: payload.data.records.length === 0 
             ? `已清空 ${currentMonth} 的所有记录` 
-            : responseData.message || `成功保存 ${records.length} 条记录`,
+            : responseData.message || `成功保存 ${payload.data.records.length} 条记录`,
           variant: "success"
         });
         setHasChanges(false);
-        setSelectedRows(new Set());
+        setSelectedRows(new Set()); // 保存完毕后重置所有行的选中状态
         loadAvailableMonths(); // 刷新可用月份列表
       } else {
-        toast({
-          title: "保存失败",
-          description: responseData.message || "保存数据时出错",
-          variant: "destructive"
-        });
+        // 处理需求ID重复的情况
+        if (responseData.duplicateRecords) {
+          const duplicateIDs = responseData.duplicateRecords.map((record: { demandId: string; description: string }) => 
+            `${record.demandId}${record.description ? ` (${record.description})` : ''}`
+          ).join(', ');
+          
+          toast({
+            title: "保存失败",
+            description: `部分需求ID已存在：${duplicateIDs}`,
+            variant: "destructive"
+          });
+        } else {
+          toast({
+            title: "保存失败",
+            description: responseData.message || "保存数据时出错",
+            variant: "destructive"
+          });
+        }
       }
     } catch (error) {
       console.error('保存数据失败:', error);
@@ -141,7 +158,7 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsSaving(false);
     }
-  }, [currentMonth, records, toast, loadAvailableMonths]);
+  }, [currentMonth, records, selectedRows, toast, loadAvailableMonths]);
 
   // 添加新记录
   const addNewRecord = useCallback(() => {
