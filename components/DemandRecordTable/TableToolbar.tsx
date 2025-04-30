@@ -57,14 +57,6 @@ const TableToolbar: React.FC = () => {
           )}
           保存
         </Button>
-        <Button
-          onClick={() => importHistoricalDataFromCSV(toast)}
-          size="sm"
-          variant="outline"
-        >
-          <Database className="mr-1 h-4 w-4" />
-          导入历史数据
-        </Button>
       </div>
       
       {/* 右侧工具栏 */}
@@ -81,7 +73,17 @@ const TableToolbar: React.FC = () => {
         {/* 搜索按钮 */}
         <SearchBar />
         
-        {/* CSV导入导出按钮 */}
+        {/* 导入历史数据按钮 */}
+        <Button
+          onClick={() => importHistoricalDataFromCSV(toast)}
+          size="sm"
+          variant="outline"
+        >
+          <Database className="mr-1 h-4 w-4" />
+          导入历史数据
+        </Button>
+        
+        {/* CSV导出按钮 */}
         <CSVHandlers />
       </div>
     </div>

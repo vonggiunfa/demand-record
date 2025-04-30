@@ -5,15 +5,18 @@ import React, { createContext, ReactNode, useCallback, useContext, useState } fr
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '../ui/use-toast';
 import {
-  API_BASE_PATH,
-  DemandTableContextType,
-  PendingAction,
-  SearchResult,
-  SearchType
+    API_BASE_PATH,
+    DemandTableContextType,
+    PendingAction,
+    SearchResult,
+    SearchType
 } from './types';
 
 // 创建上下文
 const DemandTableContext = createContext<DemandTableContextType | undefined>(undefined);
+
+// 搜索常量
+const SEARCH_LIMIT = 20; // 每页搜索结果数量
 
 // 上下文提供者组件
 export function DemandTableProvider({ children }: { children: ReactNode }) {
@@ -334,12 +337,28 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   // 加载更多搜索结果
-  const loadMoreResults = useCallback(() => {
-    if (!searchTerm.trim() || isSearchLoading || !searchResults.hasMore) return;
+  const loadMoreResults = useCallback(async () => {
+    if (!isSearchMode || !searchResults.hasMore || isSearchLoading) return;
     
-    // 加载更多结果时不要重复设置搜索模式
-    handleSearch(searchTerm, searchType, searchOffset, false);
-  }, [searchTerm, searchType, searchOffset, isSearchLoading, searchResults.hasMore, handleSearch]);
+    setIsSearchLoading(true);
+    
+    try {
+      // 计算新的偏移量
+      const newOffset = searchOffset + SEARCH_LIMIT;
+      setSearchOffset(newOffset);
+      
+      await handleSearch(searchTerm, searchType, newOffset, false);
+    } catch (error) {
+      console.error('加载更多搜索结果失败:', error);
+      toast({
+        title: "加载失败",
+        description: "无法加载更多搜索结果",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearchLoading(false);
+    }
+  }, [isSearchMode, searchResults.hasMore, isSearchLoading, searchOffset, searchTerm, searchType, handleSearch, toast, setSearchOffset, setIsSearchLoading]);
 
   // 退出搜索模式
   const exitSearchMode = useCallback(() => {
@@ -361,24 +380,10 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
         setCurrentMonth(month);
         loadData(month);
         break;
-      
-      case 'importCSV':
-        // 导入CSV
-        const importedRecords = pendingAction.data as DemandRecord[];
-        setRecords(importedRecords);
-        setHasChanges(true);
-        
-        // 添加导入成功的toast提示
-        toast({
-          title: "导入成功",
-          description: `已导入 ${importedRecords.length} 条记录，请保存以持久化数据`,
-          variant: "success"
-        });
-        break;
     }
     
     setPendingAction(null);
-  }, [pendingAction, loadData, setCurrentMonth, setRecords, setHasChanges, toast]);
+  }, [pendingAction, loadData, setCurrentMonth]);
 
   // 上下文值对象
   const contextValue: DemandTableContextType = {

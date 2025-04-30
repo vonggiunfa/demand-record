@@ -18,7 +18,7 @@ export interface SearchResult {
 
 // 待处理操作类型
 export interface PendingAction {
-  action: 'changeMonth' | 'importCSV';
+  action: 'changeMonth';
   data?: any;
 }
 
@@ -78,7 +78,7 @@ export interface DemandTableContextType {
   handleSearch: (term: string, type: SearchType, offset?: number, shouldEnterSearchMode?: boolean) => Promise<void>;
   executeSearch: (e?: React.FormEvent) => void;
   exitSearchMode: () => void;
-  loadMoreResults: () => void;
+  loadMoreResults?: () => Promise<void>;
   confirmPendingAction: () => void;
 }
 

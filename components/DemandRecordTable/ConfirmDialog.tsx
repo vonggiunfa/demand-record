@@ -27,8 +27,6 @@ const ConfirmDialog: React.FC = () => {
     switch (pendingAction.action) {
       case 'changeMonth':
         return '切换月份';
-      case 'importCSV':
-        return '导入数据';
       default:
         return '执行此操作';
     }
