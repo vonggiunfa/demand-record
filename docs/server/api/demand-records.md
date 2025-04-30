@@ -57,7 +57,48 @@ GET /api/load-data?yearMonth=YYYY-MM
 }
 ```
 
-### 2. 保存需求记录
+### 2. 获取所有需求记录
+
+获取所有年月的需求记录，不受年月限制。主要用于导出全部数据。
+
+```
+GET /api/all-demands
+```
+
+#### 成功响应 (200 OK)
+
+```json
+{
+  "success": true,
+  "message": "所有数据加载成功",
+  "data": {
+    "lastUpdated": "2023-12-15T08:30:00.000Z",
+    "records": [
+      {
+        "id": "abc123",
+        "demandId": "DEMAND-001",
+        "description": "实现登录功能",
+        "createdAt": "2023-12-10T09:00:00.000Z"
+      },
+      // ...更多记录
+    ]
+  }
+}
+```
+
+#### 错误响应
+
+##### 数据库错误 (500 Internal Server Error)
+
+```json
+{
+  "success": false,
+  "message": "加载所有数据失败",
+  "error": "错误详情"
+}
+```
+
+### 3. 保存需求记录
 
 保存指定年月的需求记录数据。
 
@@ -129,7 +170,7 @@ POST /api/save-data
 }
 ```
 
-### 3. 获取可用年月列表
+### 4. 获取可用年月列表
 
 获取系统中所有已有数据的年月列表。
 
@@ -159,7 +200,7 @@ GET /api/year-months
 }
 ```
 
-### 4. 搜索需求记录
+### 5. 搜索需求记录
 
 跨年月搜索需求记录，支持按需求ID或描述内容进行搜索。
 
@@ -257,6 +298,20 @@ if (data.success) {
 }
 ```
 
+### 加载所有年月数据示例
+
+```javascript
+// 加载所有年月的数据
+const response = await fetch('/api/all-demands');
+const data = await response.json();
+
+if (data.success) {
+  console.log(`成功加载所有年月的 ${data.data.records.length} 条记录`);
+} else {
+  console.error('加载失败:', data.message);
+}
+```
+
 ### 保存数据示例
 
 ```javascript
@@ -309,4 +364,4 @@ if (searchData.success) {
 } else {
   console.error('搜索失败:', searchData.message);
 }
-``` 
+```

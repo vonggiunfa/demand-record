@@ -158,6 +158,25 @@ export function getAllYearMonths(): string[] {
   const results = query.all() as { year_month: string }[];
   return results.map(row => row.year_month);
 }
+
+// 获取所有需求记录（不限年月）
+export function getAllDemands(): DemandRecord[] {
+  const query = db.prepare(`
+    SELECT id, demand_id, description, created_at
+    FROM demand_records
+    ORDER BY created_at DESC
+  `);
+  
+  const records = query.all() as DbDemandRecord[];
+  
+  // 转换为前端模型
+  return records.map(record => ({
+    id: record.id,
+    demandId: record.demand_id,
+    description: record.description,
+    createdAt: new Date(record.created_at)
+  }));
+}
 ```
 
 ## API 实现
@@ -291,6 +310,43 @@ export async function GET() {
     return NextResponse.json({
       success: false,
       message: "获取年月列表失败",
+      error: error instanceof Error ? error.message : '未知错误'
+    }, { status: 500 });
+  }
+}
+```
+
+### 获取所有数据 API (app/api/all-demands/route.ts)
+
+```typescript
+// app/api/all-demands/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { getAllDemands } from '@/lib/demandService';
+
+export async function GET(request: NextRequest) {
+  try {
+    console.log(`[API] 请求获取所有需求记录数据`);
+    
+    // 从服务层获取所有数据
+    const records = getAllDemands();
+    
+    console.log(`[API] 成功加载所有需求记录，共 ${records.length} 条`);
+    
+    // 返回成功响应
+    return NextResponse.json({
+      success: true,
+      message: "所有数据加载成功",
+      data: {
+        lastUpdated: new Date().toISOString(),
+        records
+      }
+    });
+  } catch (error) {
+    // 返回错误响应
+    console.error('[API] 加载所有数据失败:', error);
+    return NextResponse.json({
+      success: false,
+      message: "加载所有数据失败",
       error: error instanceof Error ? error.message : '未知错误'
     }, { status: 500 });
   }
