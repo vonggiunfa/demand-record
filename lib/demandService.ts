@@ -320,4 +320,32 @@ export const searchByDescription = (term: string, limit: number = 20, offset: nu
     console.error(`[搜索] 按描述内容搜索失败:`, error);
     return { records: [], total: 0, hasMore: false };
   }
+};
+
+// 获取所有需求记录（不限年月）
+export const getAllDemands = (): DemandRecord[] => {
+  console.log(`尝试获取所有需求记录`);
+  
+  try {
+    // 查询所有记录
+    const sql = `
+      SELECT id, demand_id, description, created_at
+      FROM demand_records
+      ORDER BY created_at DESC
+    `;
+    console.log(`执行SQL查询: ${sql.trim().replace(/\s+/g, ' ')}`);
+    
+    const records = query<any>(sql, []);
+    console.log(`查询结果: 共 ${records.length} 条记录`);
+    
+    // 调试前5条记录
+    if (records.length > 0) {
+      console.log(`部分记录示例:`, JSON.stringify(records.slice(0, 5), null, 2));
+    }
+    
+    return records.map(record => toCamelCase(record)) as DemandRecord[];
+  } catch (error) {
+    console.error(`获取所有需求记录失败:`, error);
+    return [];
+  }
 }; 
