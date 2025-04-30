@@ -3,6 +3,7 @@
 # SQLite临时文件
 *.db-shm
 *.db-wal
+*.db-journal
 
 # dependencies
 /node_modules
