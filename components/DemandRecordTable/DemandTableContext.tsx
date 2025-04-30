@@ -122,6 +122,7 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
           variant: "success"
         });
         setHasChanges(false);
+        setSelectedRows(new Set());
         loadAvailableMonths(); // 刷新可用月份列表
       } else {
         toast({

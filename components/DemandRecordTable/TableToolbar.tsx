@@ -1,12 +1,11 @@
 "use client";
 
-import { Database, Loader2, Plus, Save, Trash2 } from 'lucide-react';
+import { Loader2, Plus, Save, Trash2 } from 'lucide-react';
 import React from 'react';
 import MonthYearPicker from '../MonthYearPicker';
 import { Button } from '../ui/button';
 import CSVHandlers from './CSVHandlers';
 import { useDemandTable } from './DemandTableContext';
-import { importHistoricalData } from './HistoricalDataImport';
 import SearchBar from './SearchBar';
 
 const TableToolbar: React.FC = () => {
