@@ -100,7 +100,7 @@ GET /api/all-demands
 
 ### 3. 保存需求记录
 
-保存指定年月的需求记录数据，支持查重校验。只保存用户勾选的需求记录，系统会自动校验需求ID是否已存在。
+保存指定年月的需求记录数据，支持查重校验。只保存用户勾选的需求记录，系统会自动校验需求ID是否已存在。支持全量替换模式和增量保存模式。
 
 ```
 POST /api/save-data
@@ -126,6 +126,30 @@ POST /api/save-data
   "onlySelected": true // 标识只保存选中的记录
 }
 ```
+
+#### 请求参数说明
+
+| 参数 | 类型 | 必填 | 描述 |
+|------|------|------|------|
+| yearMonth | string | 是 | 年月标识，格式为YYYY-MM |
+| data.lastUpdated | string | 是 | 最后更新时间，ISO格式字符串 |
+| data.records | array | 是 | 需求记录数组 |
+| onlySelected | boolean | 否 | 是否仅保存选中记录，默认为false |
+
+#### 保存模式说明
+
+API支持两种保存模式：
+
+1. **全量替换模式** (`onlySelected=false`)：
+   - 删除该月份的所有现有记录
+   - 插入所有提交的新记录
+   - 适用于完全替换月份数据的场景
+
+2. **增量保存模式** (`onlySelected=true`)：
+   - 检查记录ID是否已存在，如果存在则先删除
+   - 保留该月份其他未提交的记录
+   - 追加提交的新记录
+   - 适用于导入历史数据、部分更新等场景
 
 #### 成功响应 (200 OK)
 
@@ -359,6 +383,61 @@ if (saveResult.success) {
   } else {
     console.error('保存失败:', saveResult.message);
   }
+}
+```
+
+### 导入历史数据示例
+
+```javascript
+// 从CSV导入历史数据
+async function importHistoricalData(csvData) {
+  // 1. 解析CSV数据
+  const records = parseCSV(csvData);
+  
+  // 2. 按年月分组
+  const recordsByMonth = {};
+  records.forEach(record => {
+    const date = new Date(record.createdAt);
+    const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!recordsByMonth[yearMonth]) {
+      recordsByMonth[yearMonth] = [];
+    }
+    recordsByMonth[yearMonth].push(record);
+  });
+  
+  // 3. 按月份逐个导入数据
+  for (const [yearMonth, monthRecords] of Object.entries(recordsByMonth)) {
+    // 4. 获取当前月份数据，用于去重
+    const currentDataResponse = await fetch(`/api/load-data?yearMonth=${yearMonth}`);
+    const currentData = await currentDataResponse.json();
+    
+    if (currentData.success) {
+      // 5. 过滤掉已存在的记录（以demandId为准）
+      const existingIds = new Set(currentData.data.records.map(r => r.demandId));
+      const uniqueRecords = monthRecords.filter(r => !existingIds.has(r.demandId));
+      
+      // 6. 使用增量保存模式导入数据
+      await fetch('/api/save-data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          yearMonth,
+          data: {
+            lastUpdated: new Date().toISOString(),
+            records: uniqueRecords
+          },
+          onlySelected: true // 使用增量保存模式
+        })
+      });
+    }
+  }
+}
+
+// CSV解析辅助函数
+function parseCSV(csvText) {
+  // 实现CSV解析逻辑
+  // ...
 }
 ```
 
