@@ -9,7 +9,15 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "需求记录",
   description: "需求记录表格",
-  generator: 'giunfa'
+  generator: 'giunfa',
+  icons: {
+    icon: [
+      {
+        url: '/demand-record/favicon.ico',
+        sizes: 'any',
+      },
+    ],
+  },
 }
 
 export default function RootLayout({
