@@ -80,6 +80,7 @@ export interface DemandTableContextType {
   exitSearchMode: () => void;
   loadMoreResults?: () => Promise<void>;
   confirmPendingAction: () => void;
+  handleCopyRecord: (record: DemandRecord) => void;
 }
 
 // API 基础路径

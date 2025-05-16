@@ -5,11 +5,11 @@ import React, { createContext, ReactNode, useCallback, useContext, useState } fr
 import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '../ui/use-toast';
 import {
-    API_BASE_PATH,
-    DemandTableContextType,
-    PendingAction,
-    SearchResult,
-    SearchType
+  API_BASE_PATH,
+  DemandTableContextType,
+  PendingAction,
+  SearchResult,
+  SearchType
 } from './types';
 
 // 创建上下文
@@ -385,6 +385,78 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     setPendingAction(null);
   }, [pendingAction, loadData, setCurrentMonth]);
 
+  // 处理复制需求记录
+  const handleCopyRecord = useCallback((record: DemandRecord) => {
+    // 拼接需求id和需求描述为模板：【需求id】需求描述
+    const copyText = `【${record.demandId}】${record.description}`;
+    
+    // 检查clipboard API是否可用
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      // 使用Clipboard API复制到剪贴板
+      navigator.clipboard.writeText(copyText)
+        .then(() => {
+          toast({
+            title: "复制成功",
+            description: "已复制到剪贴板",
+            variant: "success"
+          });
+        })
+        .catch((error) => {
+          console.error('复制到剪贴板失败:', error);
+          // 尝试使用备用方法
+          fallbackCopyToClipboard(copyText);
+        });
+    } else {
+      // 使用备用方法
+      fallbackCopyToClipboard(copyText);
+    }
+    
+    // 备用复制方法
+    function fallbackCopyToClipboard(text: string) {
+      try {
+        // 创建临时textarea元素
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        
+        // 确保textarea不会显示在视口中
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        if (successful) {
+          toast({
+            title: "复制成功",
+            description: "已复制到剪贴板",
+            variant: "success"
+          });
+        } else {
+          throw new Error('复制命令执行失败');
+        }
+      } catch (error) {
+        console.error('备用复制方法失败:', error);
+        toast({
+          title: "复制失败",
+          description: "无法访问剪贴板，请手动复制",
+          variant: "destructive"
+        });
+      }
+    }
+  }, [toast]);
+
   // 上下文值对象
   const contextValue: DemandTableContextType = {
     // 数据状态
@@ -439,7 +511,8 @@ export function DemandTableProvider({ children }: { children: ReactNode }) {
     handleSearch,
     exitSearchMode,
     loadMoreResults,
-    confirmPendingAction
+    confirmPendingAction,
+    handleCopyRecord
   };
 
   return (

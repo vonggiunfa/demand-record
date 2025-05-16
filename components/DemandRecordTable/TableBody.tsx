@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Loader2 } from 'lucide-react';
+import { Clipboard, Loader2 } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Checkbox } from '../ui/checkbox';
@@ -23,7 +23,8 @@ const TableComponent: React.FC = () => {
     handleRowClick,
     handleRecordChange,
     addNewRecord,
-    loadMoreResults
+    loadMoreResults,
+    handleCopyRecord
   } = useDemandTable();
 
   // 计算是否全选
@@ -47,12 +48,13 @@ const TableComponent: React.FC = () => {
             <TableHead className="w-[200px] text-center sticky-header">需求ID</TableHead>
             <TableHead className="text-center sticky-header">需求描述</TableHead>
             <TableHead className="w-[180px] text-center sticky-header">创建时间</TableHead>
+            <TableHead className="w-[100px] text-center sticky-header">操作</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {isLoading || isSearchLoading ? (
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 <div className="mt-2 text-sm text-muted-foreground">
                   {isSearchMode ? '搜索中...' : '加载中...'}
@@ -61,7 +63,7 @@ const TableComponent: React.FC = () => {
             </TableRow>
           ) : records.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={4} className="h-24 text-center">
+              <TableCell colSpan={5} className="h-24 text-center">
                 <div className="text-muted-foreground">
                   {isSearchMode ? '没有找到匹配的记录' : '暂无记录'}
                 </div>
@@ -141,6 +143,20 @@ const TableComponent: React.FC = () => {
                     <TableCell className="text-center">
                       {format(record.createdAt, 'yyyy-MM-dd HH:mm')}
                     </TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation(); // 阻止冒泡，避免触发行点击事件
+                          handleCopyRecord(record);
+                        }}
+                        title="复制需求"
+                        aria-label="复制需求"
+                      >
+                        <Clipboard className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -148,7 +164,7 @@ const TableComponent: React.FC = () => {
               {/* 加载更多按钮（仅在搜索模式且有更多结果时显示） */}
               {isSearchMode && searchResults.hasMore && (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center p-2">
+                  <TableCell colSpan={5} className="text-center p-2">
                     <Button
                       variant="ghost"
                       size="sm"
